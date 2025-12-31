@@ -46,15 +46,15 @@ export default async function PersonDetailPage({ params }: Props) {
                     </p>
 
                     <div className={styles.meta}>
-                        {person.date_of_birth && <span>Born: {person.date_of_birth}</span>}
-                        {person.date_of_death && <span>Died: {person.date_of_death}</span>}
+                        {person.date_of_birth && <span>生年: {person.date_of_birth}</span>}
+                        {person.date_of_death && <span>没年: {person.date_of_death}</span>}
                     </div>
                 </header>
 
                 <div>
                     {Object.entries(worksByRole).map(([role, roleWorks]) => (
                         <section key={role} className={styles.roleGroup}>
-                            <h2 className={styles.sectionTitle}>{role} (Works as {role})</h2>
+                            <h2 className={styles.sectionTitle}>{role}</h2>
                             <div className={styles.grid}>
                                 {roleWorks.map((work) => (
                                     <BookCard key={work.book.book_id} book={work.book} />

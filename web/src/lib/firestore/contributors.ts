@@ -11,8 +11,6 @@ export async function getWorksByPerson(personId: string): Promise<Work[]> {
     try {
         const contributorsRef = dataPoint<Contributor>('contributors');
         // Ensure personId is number if stored as number in contributors
-        // DATA_FORMAT says person_id is Integer in contributors collection.
-        // Query requires matching type.
         const pId = parseInt(personId, 10);
         if (isNaN(pId)) return [];
 
@@ -23,8 +21,9 @@ export async function getWorksByPerson(personId: string): Promise<Work[]> {
         const works: Work[] = [];
         const bookPromises = snapshot.docs.map(async (doc) => {
             const data = doc.data();
-            // book_id is number, need string for getBook
-            const book = await getBook(data.book_id.toString());
+            // book_id is number, need string for getBook with zero padding (6 digits)
+            const bookIdStr = data.book_id.toString().padStart(6, '0');
+            const book = await getBook(bookIdStr);
             if (book) {
                 // Cast role to RoleId if valid
                 const roleId = data.role as RoleId;
