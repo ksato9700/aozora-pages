@@ -1,0 +1,81 @@
+.main {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.header {
+    padding: 1rem 2rem;
+    background: rgba(15, 23, 42, 0.9);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: sticky;
+    top: 0;
+    z-index: 50;
+}
+
+.title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    font-family: var(--font-serif);
+}
+
+.viewerContainer {
+    flex: 1;
+    background: #fdfaf6;
+    /* Cream/Paper color */
+    color: #1a1a1a;
+    /* Dark grey text */
+    padding: 4rem 2rem;
+    overflow-x: auto;
+    /* Horizontal scroll for vertical text */
+    display: flex;
+    justify-content: center;
+    /* Center content initially */
+}
+
+/* Vertical Writing Mode */
+.verticalText {
+    writing-mode: vertical-rl;
+    -webkit-writing-mode: vertical-rl;
+    text-orientation: mixed;
+    line-height: 1.8;
+    font-family: var(--font-serif);
+    font-size: 1.25rem;
+    height: 80vh;
+    /* Fixed height to allow horizontal scrolling pages */
+    white-space: pre-wrap;
+
+    /* Text columns */
+    column-fill: auto;
+
+    max-width: 100%;
+}
+
+.iframeContainer {
+    flex: 1;
+    width: 100%;
+    height: calc(100vh - 80px);
+    /* Adjust for header */
+}
+
+.iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+    background: white;
+}
+
+.backLink {
+    color: var(--primary);
+    font-size: 0.875rem;
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.backLink:hover {
+    text-decoration: underline;
+}
