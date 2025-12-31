@@ -17,6 +17,13 @@ export interface Book {
   text_url?: string;
   html_url?: string;
   explanation?: string;
+  base_book_1?: string;
+  base_book_1_publisher?: string;
+  base_book_1_1st_edition?: string;
+  input?: string;
+  proofing?: string;
+  base_book_1_proofing_edition?: string;
+  base_book_1_input_edition?: string;
   [key: string]: any; // For other metadata fields
 }
 

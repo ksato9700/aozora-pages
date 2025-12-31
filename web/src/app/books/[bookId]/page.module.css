@@ -26,7 +26,7 @@
 
 .actions {
     display: flex;
-    gap: 1rem;
+    gap: 15px;
     justify-content: center;
     margin-bottom: 3rem;
 }
@@ -91,6 +91,7 @@
     font-size: 1.75rem;
     font-weight: 700;
     margin-bottom: 2rem;
+    margin-top: 3rem;
     border-left: 4px solid var(--accent);
     padding-left: 1rem;
 }

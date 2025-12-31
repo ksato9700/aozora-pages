@@ -54,3 +54,11 @@ a {
   background-clip: text;
   color: transparent;
 }
+
+th {
+  text-align: left;
+}
+
+td {
+  padding-left: 3rem;
+}

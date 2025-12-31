@@ -26,58 +26,108 @@ export default async function BookDetailPage({ params }: Props) {
         <main className={styles.main}>
             <div className="container">
                 <header className={styles.hero}>
+                    <div className="mb-2 text-sm text-gray-500">{book.title_yomi}</div>
                     <h1 className={styles.title}>{book.title}</h1>
-                    {book.subtitle && <p className={styles.subtitle}>{book.subtitle}</p>}
+                    {book.subtitle && (
+                        <div className="mb-4">
+                            <div className="text-xs text-gray-400">{book.subtitle_yomi}</div>
+                            <p className={styles.subtitle}>{book.subtitle}</p>
+                        </div>
+                    )}
 
                     <div className={styles.actions}>
                         {/* Links to internal viewer - To be implemented */}
                         {book.text_url && (
-                            <Link href={`/read/${bookId}?format=html`} className={`${styles.button} ${styles.primaryButton}`}>
-                                今すぐ読む
-                            </Link>
+                            <>
+                                <Link href={`/read/${bookId}?format=html`} className={`${styles.button} ${styles.primaryButton}`}>
+                                    今すぐ読む
+                                </Link>
+                                <a href={book.text_url} download className={`${styles.button} ${styles.secondaryButton}`}>
+                                    テキストファイルをダウンロード
+                                </a>
+                            </>
                         )}
-                        <a href={book.card_url} target="_blank" rel="noopener noreferrer" className={`${styles.button} ${styles.secondaryButton}`}>
-                            青空文庫カード
-                        </a>
+
                     </div>
 
-                    <div className={styles.metaGrid}>
-                        <div className={styles.metaItem}>
-                            <label>NDC分類</label>
-                            <span>{book.ndc_code || 'N/A'}</span>
-                        </div>
-                        <div className={styles.metaItem}>
-                            <label>公開日</label>
-                            <span>{book.release_date}</span>
-                        </div>
-                        <div className={styles.metaItem}>
-                            <label>原題</label>
-                            <span>{book.original_title || '-'}</span>
-                        </div>
-                        <div className={styles.metaItem}>
-                            <label>著作権</label>
-                            <span>{book.copyright ? 'あり' : 'なし'}</span>
-                        </div>
-                    </div>
+
                 </header>
 
-                <section>
-                    <h2 className={styles.sectionTitle}>関係者</h2>
-                    {contributors.length > 0 ? (
-                        <div className={styles.grid}>
-                            {contributors.map((c) => (
-                                <div key={`${c.person.person_id}-${c.role}`}>
-                                    <div className="mb-2 text-sm text-accent font-bold uppercase tracking-wider">
-                                        {ROLES[c.role] || 'Contributor'}
+                <div className="space-y-12 mb-16">
+                    {/* Work Data */}
+                    <div className="mb-6">
+                        <h2 className={styles.sectionTitle}>作品</h2>
+                        <table className="w-full text-sm text-left">
+                            <tbody>
+                                <tr className="border-b border-gray-200 dark:border-gray-700">
+                                    <th className="text-left font-bold text-red-800 w-32">公開日</th>
+                                    <td className="">{book.release_date || '-'}</td>
+                                </tr>
+
+                                <tr className="border-b border-gray-200 dark:border-gray-700">
+                                    <th className="text-left font-bold text-red-800 w-32">文字遣い種別</th>
+                                    <td className="">{book.font_kana_type || '-'}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    {/* Authors Data (Formerly Contributors) */}
+                    <div className="mb-6">
+                        <h2 className={styles.sectionTitle}>作家</h2>
+                        {contributors.length > 0 ? (
+                            <div className={styles.grid}>
+                                {contributors.map((c) => (
+                                    <div key={`${c.person.person_id}-${c.role}`}>
+                                        <div className="mb-2 text-sm text-accent font-bold uppercase tracking-wider">
+                                            {ROLES[c.role] || 'Contributor'}
+                                        </div>
+                                        <PersonCard person={c.person} />
                                     </div>
-                                    <PersonCard person={c.person} />
-                                </div>
-                            ))}
-                        </div>
-                    ) : (
-                        <p className="text-muted">関係者の記録はありません。</p>
-                    )}
-                </section>
+                                ))}
+                            </div>
+                        ) : (
+                            <p className="text-muted">作家の記録はありません。</p>
+                        )}
+                    </div>
+
+                    {/* Base Book Data */}
+                    <div className="mb-6">
+                        <h2 className={styles.sectionTitle}>底本</h2>
+                        <table className="w-full text-sm text-left">
+                            <tbody>
+                                <tr className="border-b border-gray-200 dark:border-gray-700">
+                                    <th className="text-left font-bold text-red-800 w-32">底本</th>
+                                    <td className="">{book.base_book_1 || '-'}</td>
+                                </tr>
+                                <tr className="border-b border-gray-200 dark:border-gray-700">
+                                    <th className="text-left font-bold text-red-800 w-32">出版社</th>
+                                    <td className="">{book.base_book_1_publisher || '-'}</td>
+                                </tr>
+
+                            </tbody>
+                        </table>
+                    </div>
+
+                    {/* Worker Data */}
+                    <div>
+                        <h2 className={styles.sectionTitle}>工作員</h2>
+                        <table className="w-full text-sm text-left">
+                            <tbody>
+                                <tr className="border-b border-gray-200 dark:border-gray-700">
+                                    <th className="text-left font-bold text-red-800 w-32">入力者</th>
+                                    <td className="">{book.input || '-'}</td>
+                                </tr>
+                                <tr className="border-b border-gray-200 dark:border-gray-700">
+                                    <th className="text-left font-bold text-red-800 w-32">校正者</th>
+                                    <td className="">{book.proofing || '-'}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+
             </div>
         </main>
     );
