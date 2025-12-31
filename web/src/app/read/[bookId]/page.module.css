@@ -1,7 +1,8 @@
 .main {
-    min-height: 100vh;
+    height: 100vh;
     display: flex;
     flex-direction: column;
+    overflow: hidden;
 }
 
 .header {
@@ -58,8 +59,10 @@
 .iframeContainer {
     flex: 1;
     width: 100%;
-    height: calc(100vh - 80px);
-    /* Adjust for header */
+    overflow: hidden;
+    position: relative;
+    display: flex;
+    flex-direction: column;
 }
 
 .iframe {
