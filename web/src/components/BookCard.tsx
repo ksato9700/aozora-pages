@@ -4,35 +4,42 @@ import styles from './BookCard.module.css';
 
 interface BookCardProps {
     book: Book;
+    authorName?: string;
 }
 
-export default function BookCard({ book }: BookCardProps) {
+export default function BookCard({ book, authorName }: BookCardProps) {
     const title = book.title;
     const subtitle = book.subtitle;
+    const date = book.release_date;
 
     return (
-        <Link href={`/books/${book.book_id}`} className={styles.card}>
+        <div className={styles.card}>
             <div className={styles.glassPanel}>
                 <div className={styles.gradientOverlay} />
 
                 <div className={styles.content}>
-                    <h3 className={styles.title}>
-                        {title}
-                    </h3>
-                    {subtitle && (
-                        <p className={styles.subtitle}>{subtitle}</p>
-                    )}
+                    <Link href={`/books/${book.book_id}`} className="flex-1">
+                        <h3 className={styles.title}>
+                            {title}
+                        </h3>
+                        {subtitle && (
+                            <p className={styles.subtitle}>{subtitle}</p>
+                        )}
+                        <div className="mt-2 text-sm text-gray-300">
+                            {authorName && <div className="font-medium">{authorName}</div>}
+                            <div className="text-xs text-gray-400 mt-1">
+                                {date}
+                            </div>
+                        </div>
+                    </Link>
 
                     <div className={styles.footer}>
-                        <div className={styles.id}>
-                            ID: {book.book_id}
-                        </div>
-                        <span className={styles.badge}>
-                            Read Now
-                        </span>
+                        <Link href={`/read/${book.book_id}?format=html`} className={styles.badge}>
+                            今すぐ読む
+                        </Link>
                     </div>
                 </div>
             </div>
-        </Link>
+        </div>
     );
 }

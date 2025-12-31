@@ -26,7 +26,7 @@ export default async function ReaderPage({ params, searchParams }: Props) {
             content = await fetchTextContent(book.text_url);
         } catch (e) {
             console.error("Failed to load text content", e);
-            content = "Error loading content. Please try HTML mode or check the source.";
+            content = "読み込みエラー。HTMLモードを試すか、情報源を確認してください。";
         }
     }
 
@@ -35,12 +35,12 @@ export default async function ReaderPage({ params, searchParams }: Props) {
             <header className={styles.header}>
                 <div className="flex items-center gap-4">
                     <Link href={`/books/${bookId}`} className={styles.backLink}>
-                        ← Back to Details
+                        ← 詳細に戻る
                     </Link>
                     <h1 className={styles.title}>{book.title}</h1>
                 </div>
                 <div className="text-sm text-muted">
-                    {mode === 'text' ? 'Text Mode' : 'HTML Mode'}
+                    {mode === 'text' ? 'テキストモード' : 'HTMLモード'}
                 </div>
             </header>
 
@@ -56,7 +56,7 @@ export default async function ReaderPage({ params, searchParams }: Props) {
                         <iframe src={book.html_url} className={styles.iframe} title={book.title} />
                     ) : (
                         <div className="flex items-center justify-center h-full text-muted">
-                            HTML version not available.
+                            HTML版は利用できません。
                         </div>
                     )}
                 </div>
