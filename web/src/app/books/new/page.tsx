@@ -4,7 +4,7 @@ import BookCard from '@/components/BookCard';
 import styles from '../../page.module.css';
 import { getContributorsForBook } from '@/lib/firestore/contributors';
 
-export const revalidate = 3600;
+export const dynamic = 'force-dynamic';
 
 export default async function NewBooksPage() {
     const recentBooks = await getRecentBooks(50);

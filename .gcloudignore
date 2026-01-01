@@ -1,0 +1,25 @@
+# Version control
+.git
+.gitignore
+
+# Dependencies
+# Dependencies
+node_modules
+**/node_modules
+web/node_modules
+
+# Build output
+dist
+out
+build
+.next
+**/.next
+web/.next
+
+# OS
+.DS_Store
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
