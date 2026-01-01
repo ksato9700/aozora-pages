@@ -1,5 +1,7 @@
+import Link from 'next/link';
 import { getRecentBooks } from '@/lib/firestore/books';
 import BookCard from '@/components/BookCard';
+import SearchSection from '@/components/SearchSection';
 import styles from './page.module.css';
 
 import { getContributorsForBook } from '@/lib/firestore/contributors';
@@ -7,7 +9,7 @@ import { getContributorsForBook } from '@/lib/firestore/contributors';
 export const revalidate = 3600; // Revalidate every hour
 
 export default async function Home() {
-  const recentBooks = await getRecentBooks(20);
+  const recentBooks = await getRecentBooks(6);
 
   // Fetch authors for all books
   const authors: Record<string, string> = {};
@@ -32,8 +34,15 @@ export default async function Home() {
           </p>
         </header>
 
+        <SearchSection />
+
         <section>
-          <h2 className={styles.sectionTitle}>新着図書</h2>
+          <div className="flex justify-between items-end mb-8 w-full">
+            <h2 className={styles.sectionTitle} style={{ marginBottom: 0 }}>新着図書</h2>
+            <Link href="/books/new" className="text-sm text-primary hover:underline">
+              もっと見る &rarr;
+            </Link>
+          </div>
 
           {recentBooks.length > 0 ? (
             <div className={styles.grid}>
