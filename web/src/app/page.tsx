@@ -36,7 +36,7 @@ export default async function Home() {
 
         <SearchSection />
 
-        <section>
+        <section style={{ marginTop: '30pt' }}>
           <div className="flex justify-between items-end mb-8 w-full">
             <h2 className={styles.sectionTitle} style={{ marginBottom: 0 }}>新着図書</h2>
             <Link href="/books/new" className="text-sm text-primary hover:underline">
