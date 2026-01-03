@@ -42,7 +42,7 @@ export default async function BookDetailPage({ params }: Props) {
                                 <Link href={`/read/${bookId}?format=html`} className={`${styles.button} ${styles.primaryButton}`}>
                                     今すぐ読む
                                 </Link>
-                                <a href={book.text_url} download className={`${styles.button} ${styles.secondaryButton}`}>
+                                <a href={`https://aozora.ksato9700.com/${bookId.padStart(6, '0')}.utf8.txt`} className={`${styles.button} ${styles.secondaryButton}`} target="_blank" rel="noopener noreferrer">
                                     テキストファイルをダウンロード
                                 </a>
                             </>
