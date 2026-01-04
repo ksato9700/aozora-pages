@@ -44,6 +44,78 @@ Server Actions provide a secure way to execute server-side logic from Client Com
   - Queries Firestore for Books and Persons matching the query.
   - Returns enriched data (e.g., resolving Author names) to the client.
 
+## System Architecture Diagram
+
+This diagram provides a high-level view of the system components and their interactions, including external services.
+
+```mermaid
+graph TD
+    User[User]
+
+    subgraph Client[Client Side]
+        Browser[Browser]
+    end
+
+    subgraph GCP[Google Cloud Platform]
+        CloudRun["Cloud Run<br/>(Next.js App)"]
+        Firestore[(Firestore)]
+    end
+
+    subgraph External[External Services]
+        R2["Cloudflare R2<br/>(Text Files)"]
+        Aozora["Aozora Bunko<br/>(HTML Content)"]
+    end
+
+    User --> Browser
+
+    %% Web Application Flow
+    Browser -- "HTTPS Request" --> CloudRun
+    CloudRun -- "Server Components Render" --> Browser
+
+    %% Data Access
+    CloudRun -- "Query Data" --> Firestore
+
+    %% Content Delivery
+    CloudRun -. "Fetch Text (for Reader)" .-> R2
+    Browser -- "Direct Download (.txt)" --> R2
+    Browser -- "iframe (HTML)" --> Aozora
+```
+
+### Legacy Architecture (Reference)
+
+This diagram illustrates the original architecture where content was sourced directly from Aozora Bunko.
+
+```mermaid
+graph TD
+    User[User]
+
+    subgraph Client[Client Side]
+        Browser[Browser]
+    end
+
+    subgraph GCP[Google Cloud Platform]
+        CloudRun["Cloud Run<br/>(Next.js App)"]
+        Firestore[(Firestore)]
+    end
+
+    subgraph External[External]
+        Aozora["Aozora Bunko<br/>(Original Site)"]
+    end
+
+    User --> Browser
+
+    %% Web Application Flow
+    Browser -- "HTTPS Request" --> CloudRun
+    CloudRun -- "Server Components Render" --> Browser
+
+    %% Data Access
+    CloudRun -- "Query Data" --> Firestore
+
+    %% Content Delivery
+    CloudRun -. "Fetch Text/HTML" .-> Aozora
+    Browser -- "Direct Download" --> Aozora
+```
+
 ## Data Flow & Interaction Diagram
 
 The following diagram illustrates the separation of concerns and data flow between the Client, Server, and Database.
