@@ -1,6 +1,5 @@
 import { db, dataPoint } from '@/lib/firebase/server';
-import { Contributor, Book, ROLES, RoleId, Person } from '@/types/aozora';
-import { getBook } from './books'; // Reuse single book fetch or implement batch
+import { Contributor, Book, RoleId, Person } from '@/types/aozora';
 
 export type Work = {
     role: RoleId;
@@ -10,32 +9,32 @@ export type Work = {
 export async function getWorksByPerson(personId: string): Promise<Work[]> {
     try {
         const contributorsRef = dataPoint<Contributor>('contributors');
-        // Ensure personId is number if stored as number in contributors
         const pId = parseInt(personId, 10);
         if (isNaN(pId)) return [];
 
         const snapshot = await contributorsRef.where('person_id', '==', pId).get();
-
         if (snapshot.empty) return [];
 
-        const works: Work[] = [];
-        const bookPromises = snapshot.docs.map(async (doc) => {
+        // Collect all unique book IDs (6-digit zero padded) and map them to roles
+        const bookRoleMap: Record<string, RoleId> = {};
+        const bookRefs = snapshot.docs.map(doc => {
             const data = doc.data();
-            // book_id is number, need string for getBook with zero padding (6 digits)
             const bookIdStr = data.book_id.toString().padStart(6, '0');
-            const book = await getBook(bookIdStr);
-            if (book) {
-                // Cast role to RoleId if valid
-                const roleId = data.role as RoleId;
-                return { role: roleId, book };
-            }
-            return null;
+            bookRoleMap[bookIdStr] = data.role as RoleId;
+            return db.collection('books').doc(bookIdStr);
         });
 
-        const results = await Promise.all(bookPromises);
+        if (bookRefs.length === 0) return [];
 
-        // Filter nulls
-        return results.filter((w): w is Work => w !== null);
+        // Fetch all books in one batch
+        const bookSnapshots = await db.getAll(...bookRefs);
+        
+        return bookSnapshots
+            .filter(snap => snap.exists)
+            .map(snap => ({
+                role: bookRoleMap[snap.id],
+                book: { ...snap.data() as Book, book_id: snap.id }
+            }));
 
     } catch (error) {
         console.error(`Error fetching works for person ${personId}:`, error);
@@ -55,24 +54,28 @@ export async function getContributorsForBook(bookId: string): Promise<BookContri
 
         const contributorsRef = dataPoint<Contributor>('contributors');
         const snapshot = await contributorsRef.where('book_id', '==', bId).get();
-
         if (snapshot.empty) return [];
 
-        const personPromises = snapshot.docs.map(async (doc) => {
+        // Collect unique person IDs and map them to roles
+        const personRoleMap: Record<string, RoleId> = {};
+        const personRefs = snapshot.docs.map(doc => {
             const data = doc.data();
-            // person_id is number or string? DATA_FORMAT says person_id is Integer.
-            // But getPerson expects string with zero-padding (6 digits).
             const personIdStr = data.person_id.toString().padStart(6, '0');
-            const person = await import('./persons').then(m => m.getPerson(personIdStr));
-            if (person) {
-                const roleId = data.role as RoleId;
-                return { role: roleId, person };
-            }
-            return null;
+            personRoleMap[personIdStr] = data.role as RoleId;
+            return db.collection('persons').doc(personIdStr);
         });
 
-        const results = await Promise.all(personPromises);
-        return results.filter((c): c is BookContributor => c !== null);
+        if (personRefs.length === 0) return [];
+
+        // Fetch all persons in one batch
+        const personSnapshots = await db.getAll(...personRefs);
+        
+        return personSnapshots
+            .filter(snap => snap.exists)
+            .map(snap => ({
+                role: personRoleMap[snap.id],
+                person: { ...snap.data() as Person, person_id: snap.id }
+            }));
 
     } catch (error) {
         console.error(`Error fetching contributors for book ${bookId}:`, error);
