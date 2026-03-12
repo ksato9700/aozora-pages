@@ -1,20 +1,21 @@
 import { dataPoint } from '@/lib/firebase/server';
 import { Book } from '@/types/aozora';
 
-export async function getRecentBooks(limit: number = 20): Promise<Book[]> {
+export async function getRecentBooks(limit: number = 20, after?: string): Promise<Book[]> {
     try {
         const booksRef = dataPoint<Book>('books');
-        const q = booksRef.orderBy('release_date', 'desc').limit(limit);
+        let q = booksRef.orderBy('release_date', 'desc').limit(limit);
+        if (after) {
+            q = q.startAfter(after);
+        }
         const snapshot = await q.get();
 
         return snapshot.docs.map(doc => ({
             ...doc.data(),
-            book_id: doc.id, // Ensure ID is included
+            book_id: doc.id,
         }));
     } catch (error) {
         console.error("Error fetching recent books:", error);
-        // Return empty array or throw, depending on error handling strategy.
-        // For now, return empty to not crash the page.
         return [];
     }
 }
