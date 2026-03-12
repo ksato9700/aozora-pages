@@ -24,6 +24,8 @@ export interface Book {
   proofing?: string;
   base_book_1_proofing_edition?: string;
   base_book_1_input_edition?: string;
+  author_name?: string;
+  author_id?: number;
   [key: string]: any; // For other metadata fields
 }
 

@@ -41,19 +41,10 @@ export async function search(query: string): Promise<SearchResult> {
         pName.docs.forEach(doc => personMap.set(doc.id, { ...doc.data(), person_id: doc.id }));
         pYomi.docs.forEach(doc => personMap.set(doc.id, { ...doc.data(), person_id: doc.id }));
 
-        // Enrich Books with Author Name
-        // Import dynamically to avoid circular dependencies if any (though getContributorsForBook is in lib)
-        const { getContributorsForBook } = await import('@/lib/firestore/contributors');
-
         const books = Array.from(bookMap.values());
-        const enrichedBooks = await Promise.all(books.map(async (book) => {
-            const contributors = await getContributorsForBook(book.book_id);
-            // Role 0 is Author
-            const author = contributors.find(c => c.role === 0)?.person;
-            return {
-                ...book,
-                authorName: author ? `${author.last_name} ${author.first_name}` : undefined
-            };
+        const enrichedBooks = books.map(book => ({
+            ...book,
+            authorName: book.author_name,
         }));
 
         return {

@@ -52,8 +52,12 @@ export default async function ReaderPage({ params, searchParams }: Props) {
                 </div>
             ) : (
                 <div className={styles.iframeContainer}>
-                    {book.html_url ? (
-                        <iframe src={book.html_url} className={styles.iframe} title={book.title} />
+                    {book.html_url || !book.copyright ? (
+                        <iframe
+                            src={!book.copyright ? `https://aozora.ksato9700.com/${bookId.padStart(6, '0')}.utf8.html` : book.html_url}
+                            className={styles.iframe}
+                            title={book.title}
+                        />
                     ) : (
                         <div className="flex items-center justify-center h-full text-muted">
                             HTML版は利用できません。
