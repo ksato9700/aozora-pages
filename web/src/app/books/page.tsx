@@ -1,4 +1,5 @@
-import { getRecentBooks, searchBooks } from '@/lib/firestore/books';
+import { getRecentBooks } from '@/lib/firestore/books';
+import { searchBooks } from '@/lib/algolia/search';
 import BookCard from '@/components/BookCard';
 import SearchInput from '@/components/SearchInput';
 import styles from './page.module.css';

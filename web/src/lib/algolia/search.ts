@@ -15,3 +15,17 @@ export async function unifiedSearch(query: string): Promise<SearchResult> {
 
   return { books, persons };
 }
+
+export async function searchBooks(query: string, limit: number = 20): Promise<EnrichedBook[]> {
+  const { results } = await algolia.search({
+    requests: [{ indexName: 'books', query, hitsPerPage: limit }],
+  });
+  return (results[0] as unknown as { hits: EnrichedBook[] }).hits;
+}
+
+export async function searchPersons(query: string, limit: number = 20): Promise<Person[]> {
+  const { results } = await algolia.search({
+    requests: [{ indexName: 'persons', query, hitsPerPage: limit }],
+  });
+  return (results[0] as unknown as { hits: Person[] }).hits;
+}

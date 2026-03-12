@@ -1,4 +1,4 @@
-import { db, dataPoint } from '@/lib/firebase/server';
+import { dataPoint } from '@/lib/firebase/server';
 import { Person } from '@/types/aozora';
 
 export async function getPersons(limit: number = 20): Promise<Person[]> {
@@ -20,27 +20,6 @@ export async function getPersons(limit: number = 20): Promise<Person[]> {
     }
 }
 
-export async function searchPersons(query: string, limit: number = 20): Promise<Person[]> {
-    try {
-        const personsRef = dataPoint<Person>('persons');
-        // search by last_name
-        const q = personsRef
-            .where('last_name', '>=', query)
-            .where('last_name', '<', query + '\uf8ff')
-            .orderBy('last_name')
-            .limit(limit);
-
-        const snapshot = await q.get();
-
-        return snapshot.docs.map(doc => ({
-            ...doc.data(),
-            person_id: doc.id,
-        }));
-    } catch (error) {
-        console.error("Error searching persons:", error);
-        return [];
-    }
-}
 
 export async function getPerson(personId: string): Promise<Person | null> {
     try {

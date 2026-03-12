@@ -1,4 +1,5 @@
-import { getPersons, searchPersons } from '@/lib/firestore/persons';
+import { getPersons } from '@/lib/firestore/persons';
+import { searchPersons } from '@/lib/algolia/search';
 import PersonCard from '@/components/PersonCard';
 import SearchInput from '@/components/SearchInput';
 import styles from './page.module.css';

@@ -26,7 +26,6 @@ export interface Book {
   base_book_1_input_edition?: string;
   author_name?: string;
   author_id?: number;
-  [key: string]: any; // For other metadata fields
 }
 
 export interface Person {
