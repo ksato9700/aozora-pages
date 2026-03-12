@@ -1,11 +1,9 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useDebounce } from 'use-debounce';
 import { search, SearchResult } from '@/app/actions';
-import { Book, Person } from '@/types/aozora';
-import styles from './SearchSection.module.css'; // We'll create this or use inline styles
 
 export default function SearchSection() {
     const [query, setQuery] = useState('');

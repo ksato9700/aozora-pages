@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation';
 import { getPerson } from '@/lib/firestore/persons';
 import { getWorksByPerson } from '@/lib/firestore/contributors';
-import { ROLES, RoleId } from '@/types/aozora';
+import { ROLES } from '@/types/aozora';
 import BookCard from '@/components/BookCard';
 import styles from './page.module.css';
 
