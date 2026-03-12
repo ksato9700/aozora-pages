@@ -10,8 +10,8 @@ export async function unifiedSearch(query: string): Promise<SearchResult> {
     ],
   });
 
-  const books   = (results[0] as { hits: EnrichedBook[] }).hits;
-  const persons = (results[1] as { hits: Person[] }).hits;
+  const books   = (results[0] as unknown as { hits: EnrichedBook[] }).hits;
+  const persons = (results[1] as unknown as { hits: Person[] }).hits;
 
   return { books, persons };
 }
