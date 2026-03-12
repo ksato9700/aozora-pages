@@ -1,26 +1,19 @@
-# Change Proposal: Critical System Improvements
+# System Improvements: Phase 2
 
-This document outlines several critical security, stability, and performance issues identified in the Aozora Pages codebase and proposes specific technical solutions to address them.
+This document tracks completed and upcoming improvements for the Aozora Pages application.
 
-## 1. Security: SSRF Mitigation in Reader
-*   **Current Issue:** The `fetchTextContent` function in `web/src/lib/viewer.ts` fetches any URL provided by the database without validation. This exposes the server to Server-Side Request Forgery (SSRF) attacks if malicious or internal URLs are present in the `text_url` field.
-*   **Proposed Fix:** Implement a strict hostname allowlist. Only allow requests to trusted domains such as `www.aozora.gr.jp`, `aozora.ksato9700.com`, and verified Cloudflare R2 bucket endpoints.
+## Completed Improvements
 
-## 2. Stability: Memory Protection (OOM Prevention)
-*   **Current Issue:** The application downloads and decodes files (ZIP and Text) directly into memory without size limits. Large files could trigger "Out of Memory" (OOM) crashes on Cloud Run instances.
+1.  **[DONE] Security: SSRF Mitigation in Reader** (Implemented in PR #1)
+2.  **[DONE] Stability: Memory Protection** (Implemented in PR #1)
+3.  **[DONE] Reliability: Algolia v5 Type Safety** (Implemented in PR #2)
+4.  **[DONE] Performance: N+1 Firestore Query Optimization** (Implemented in PR #2)
+5.  **[DONE] Maintainability: Resolve Cyclic Dependencies** (Implemented in PR #2)
+
+## Upcoming Improvements (Phase 2)
+
+### 6. Security/Cost: Search Rate Limiting & Caching
+*   **Issue:** The `search` Server Action is not rate-limited and lacks caching. Malicious users or bots could programmatically call this action, and repeated identical searches incur unnecessary Algolia API costs.
 *   **Proposed Fix:** 
-    *   Enforce a **10MB size limit** via the `Content-Length` header before downloading.
-    *   Implement a **10-second timeout** for all external fetch requests.
-    *   Add size checks during ZIP extraction to prevent "Zip Bomb" attacks.
-
-## 3. Reliability: Algolia v5 Type Safety
-*   **Current Issue:** `web/src/lib/algolia/search.ts` uses `as unknown as ...` casting for search results. This is brittle and bypasses the type safety of the Algolia v5 SDK, risking runtime crashes if the response structure differs from expectations (e.g., on search errors).
-*   **Proposed Fix:** Refactor search logic to use proper type guards and defensive checks for the `results` array and its constituent `hits`.
-
-## 4. Performance: N+1 Firestore Query Optimization
-*   **Current Issue:** Functions like `getWorksByPerson` and `getContributorsForBook` in `web/src/lib/firestore/contributors.ts` perform individual Firestore `get()` calls in a loop (N+1 problem). This significantly increases latency and database costs.
-*   **Proposed Fix:** Utilize `db.getAll()` to fetch all required Book or Person documents in a single batch request.
-
-## 5. Maintainability: Resolve Cyclic Dependencies
-*   **Current Issue:** There is a circular import between `persons.ts` and `contributors.ts`. This can cause unpredictable behavior during module initialization in Node.js.
-*   **Proposed Fix:** Move the shared fetching logic or type definitions to a neutral utility file to break the cycle.
+    *   Implement a simple in-memory rate limiter for the `search` action, keyed by user IP address (accessible via `headers()`).
+    *   Add a short-lived (e.g., 5-minute) in-memory cache for search results to reduce Algolia hits for popular queries.
