@@ -73,7 +73,7 @@ export default function SearchSection() {
                         <ul className="py-2">
                             {results.persons.map(person => (
                                 <li key={person.person_id}>
-                                    <Link href={`/persons/${person.person_id}`} className="flex items-center px-8 py-3 hover:bg-gray-100 transition-colors text-gray-700">
+                                    <Link href={`/persons/${String(person.person_id).padStart(6, '0')}`} className="flex items-center px-8 py-3 hover:bg-gray-100 transition-colors text-gray-700">
                                         <svg
                                             style={{ width: '24px', height: '24px', minWidth: '24px' }}
                                             className="text-gray-400 mr-4 flex-shrink-0"
@@ -91,7 +91,7 @@ export default function SearchSection() {
                             ))}
                             {results.books.map(book => (
                                 <li key={book.book_id}>
-                                    <Link href={`/books/${book.book_id}`} className="flex items-center px-8 py-3 hover:bg-gray-100 transition-colors text-gray-700">
+                                    <Link href={`/books/${String(book.book_id).padStart(6, '0')}`} className="flex items-center px-8 py-3 hover:bg-gray-100 transition-colors text-gray-700">
                                         <svg
                                             style={{ width: '24px', height: '24px', minWidth: '24px' }}
                                             className="text-gray-400 mr-4 flex-shrink-0"
