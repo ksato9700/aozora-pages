@@ -21,19 +21,11 @@ steps:
       - '--platform'
       - 'managed'
       - '--allow-unauthenticated'
-      - '--update-env-vars'
-      - 'ALGOLIA_APP_ID=$$ALGOLIA_APP_ID,ALGOLIA_SEARCH_KEY=$$ALGOLIA_SEARCH_KEY'
-    secretEnv: ['ALGOLIA_APP_ID', 'ALGOLIA_SEARCH_KEY']
+      - '--update-secrets'
+      - 'ALGOLIA_APP_ID=ALGOLIA_APP_ID:latest,ALGOLIA_SEARCH_KEY=ALGOLIA_SEARCH_KEY:latest'
 
 images:
   - 'asia-northeast1-docker.pkg.dev/$PROJECT_ID/aozora/web:$COMMIT_SHA'
-
-availableSecrets:
-  secretManager:
-    - versionName: projects/$PROJECT_ID/secrets/ALGOLIA_APP_ID/versions/latest
-      env: 'ALGOLIA_APP_ID'
-    - versionName: projects/$PROJECT_ID/secrets/ALGOLIA_SEARCH_KEY/versions/latest
-      env: 'ALGOLIA_SEARCH_KEY'
 
 options:
   logging: CLOUD_LOGGING_ONLY
