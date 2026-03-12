@@ -11,6 +11,7 @@ Aozora Pages is a modern web reader for [Aozora Bunko (青空文庫)](https://ww
 | Framework | Next.js 16 (App Router, React 19) |
 | Language | TypeScript 5 |
 | Database | Google Cloud Firestore (via `firebase-admin`) |
+| Search | Algolia (full-text search across books and persons) |
 | Hosting | Google Cloud Run (containerised) |
 | Text storage | Cloudflare R2 (UTF-8 converted `.txt` / `.zip`) |
 | HTML mirror | `aozora.ksato9700.com` (UTF-8 HTML conversion) |
@@ -36,7 +37,7 @@ All pages are rendered server-side and query Firestore directly.
 ## Key Features
 
 ### Search
-`SearchSection.tsx` (Client Component) debounces user input and calls the `search()` Server Action (`app/actions.ts`). The action runs four parallel Firestore prefix-range queries (book title, title yomi, author last name, author last name yomi), deduplicates results, enriches books with author names, and returns a `SearchResult` object.
+`SearchSection.tsx` (Client Component) debounces user input and calls the `search()` Server Action (`app/actions.ts`). The action issues a single Algolia multi-index query across `books` and `persons`, enabling full-text and substring matching across titles, yomi readings, and author names. Results are returned as a `SearchResult` object and displayed in a live dropdown.
 
 ### Reader
 `/read/[bookId]` supports two modes selected via `?format=` query param:
@@ -77,15 +78,21 @@ aozora-pages/
 │   │   │   │   ├── books.ts              # getBook(), getRecentBooks()
 │   │   │   │   ├── persons.ts            # getPerson()
 │   │   │   │   └── contributors.ts       # getContributorsForBook(), getWorksByPerson()
+│   │   │   ├── algolia/
+│   │   │   │   ├── client.ts             # Algolia client init
+│   │   │   │   └── search.ts             # unifiedSearch() — multi-index query
 │   │   │   └── viewer.ts                 # fetchTextContent() — Shift_JIS / zip decode
 │   │   └── types/
 │   │       └── aozora.ts                 # Book, Person, Contributor types; ROLES map
 │   ├── Dockerfile
 │   └── next.config.ts
+├── scripts/
+│   └── index_algolia.py        # Manual full re-index of Firestore → Algolia
 ├── docs/
 │   ├── OVERVIEW.md             # This document
 │   ├── ARCHITECTURE.md         # Component architecture & Mermaid diagrams
-│   └── DATA_FORMAT.md          # Firestore schema reference
+│   ├── DATA_FORMAT.md          # Firestore schema reference
+│   └── design/                 # Design docs for individual improvements
 ├── cloudbuild.yaml             # Google Cloud Build CI/CD
 └── Makefile
 ```
@@ -96,7 +103,7 @@ aozora-pages/
 
 Three main collections mirror the Aozora Bunko CSV catalogue (imported by the separate `py-aozora-data` tool):
 
-- **`books`** — keyed by `book_id`; holds title, URLs, metadata.
+- **`books`** — keyed by `book_id`; holds title, URLs, metadata, and denormalized `author_name` / `author_id`.
 - **`persons`** — keyed by `person_id`; holds author name, dates.
 - **`contributors`** — keyed by `{book_id}-{person_id}-{role_id}`; links books to persons with roles (著者/翻訳者/編者/校訂者/その他).
 
@@ -104,8 +111,19 @@ See [DATA_FORMAT.md](./DATA_FORMAT.md) for full field reference.
 
 ---
 
+## Search Index (Algolia)
+
+Two Algolia indices mirror a subset of the Firestore data for full-text search:
+
+- **`books`** — `title`, `title_yomi`, `author_name`, `author_name_yomi`
+- **`persons`** — `last_name`, `first_name`, `last_name_yomi`, `first_name_yomi`
+
+Indices are updated incrementally after each daily import run by the `py-aozora-data` importer. For a manual full re-index, run `scripts/index_algolia.py`.
+
+---
+
 ## Deployment
 
-The app is containerised with Docker and deployed to **Google Cloud Run** via **Cloud Build** (`cloudbuild.yaml`). Cloud Run provides automatic scaling to zero and handles HTTPS termination. Firestore credentials are injected at runtime via the service account attached to the Cloud Run service.
+The app is containerised with Docker and deployed to **Google Cloud Run** via **Cloud Build** (`cloudbuild.yaml`). Cloud Run provides automatic scaling to zero and handles HTTPS termination. Firestore credentials and Algolia API keys are injected at runtime via Secret Manager bindings on the Cloud Run service.
 
-For local development, see [web/README.md](../web/README.md).
+For local development, copy `web/.env.local.example` to `web/.env.local` and fill in your Algolia keys.

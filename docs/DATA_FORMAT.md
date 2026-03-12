@@ -14,7 +14,7 @@ There is also a configuration collection used for tracking import state.
 ## Collections
 
 ### 1. `books` Collection
-**Document ID**: `book_id` (Integer as String, e.g., "1234")
+**Document ID**: `book_id` (Integer as String, zero-padded to 6 digits, e.g., "001234")
 
 | Field | Type | Description |
 |---|---|---|
@@ -37,10 +37,14 @@ There is also a configuration collection used for tracking import state.
 | `base_book_1` | String | Information about the base book used |
 | `input` | String | Name of the person who input the text |
 | `proofing` | String | Name of the person who proofread the text |
+| `author_name` | String | Denormalized primary author name (e.g., "夏目 漱石") |
+| `author_id` | Integer | Denormalized primary author `person_id` |
 | ... | ... | *Various other metadata fields from CSV* |
 
+> `author_name` and `author_id` are written by the importer in a second pass after all contributors are processed. Role 0 (著者) takes priority; first contributor is used as fallback.
+
 ### 2. `persons` Collection
-**Document ID**: `person_id` (Integer as String, e.g., "567")
+**Document ID**: `person_id` (Integer as String, zero-padded to 6 digits, e.g., "000567")
 
 | Field | Type | Description |
 |---|---|---|
@@ -58,7 +62,7 @@ There is also a configuration collection used for tracking import state.
 | `author_copyright`| Boolean | `true` if author textual copyright exists |
 
 ### 3. `contributors` Collection
-**Document ID**: `{book_id}-{person_id}-{role_id}` (e.g., "1234-567-0")
+**Document ID**: `{book_id}-{person_id}-{role_id}` (e.g., "001234-000567-0")
 
 | Field | Type | Description |
 |---|---|---|
