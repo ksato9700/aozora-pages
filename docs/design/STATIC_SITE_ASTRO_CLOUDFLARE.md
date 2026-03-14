@@ -1,6 +1,6 @@
 # Design: Static Site Migration — Astro 6.0 on Cloudflare
 
-**Status:** Implemented
+**Status:** Implemented (merged 2026-03-15)
 **Date:** 2026-03-13
 **Context:** Replace the current Next.js / Cloud Run / Firestore stack with a static site built by Astro 6.0, generated inside the existing `py-aozora-data` import container, and deployed to Cloudflare Pages.
 
@@ -40,7 +40,7 @@ Firestore's only role was bridging two independent processes. Remove that bridge
 |---|---|
 | Total books | ~17,800 |
 | Total persons | ~1,300 |
-| Total pages pre-rendered | ~36,900 |
+| Total pages pre-rendered | ~19,200 (read pages are SPA, not pre-rendered) |
 | Update frequency | Once per day |
 | User personalisation | None |
 | Authentication | None |
@@ -260,7 +260,7 @@ Remove `firebase-admin`.
 | Algolia incremental update | 5–10 s |
 | JSON file write (~38K records) | 2–5 s |
 | `npm ci` (cached layers) | 10–20 s |
-| `astro build` (36,900 pages) | 60–90 s |
+| `astro build` (~19,200 pages) | 60–90 s |
 | `wrangler pages deploy` | 30–60 s |
 | **Total** | **~3–4 min** |
 

@@ -1,140 +1,193 @@
-# Aozora Pages Architecture
-
-This document outlines the architecture of the Aozora Pages application, built with Next.js App Router and hosted on Google Cloud Run.
+# Aozora Pages — Architecture
 
 ## Overview
 
-The application utilizes a hybrid rendering approach leveraging Next.js App Router's Server Components and Client Components, interacting with Google Cloud Firestore for data persistence and Algolia for full-text search.
+Aozora Pages is a **statically generated site** built with Astro 6.0 and served from Cloudflare Pages. There is no runtime server. All HTML pages are pre-rendered once per day by a Cloud Run Job and deployed directly to Cloudflare's CDN.
 
 ### Core Technologies
-- **Framework**: Next.js (App Router)
-- **Deployment**: Google Cloud Run (Containerized)
-- **Database**: Google Cloud Firestore
-- **Search**: Algolia (multi-index full-text search)
-- **Styling**: CSS Modules / Tailwind CSS
 
-## Component Architecture
+| Concern | Technology |
+|---|---|
+| Site generation | Astro 6.0 (`output: 'static'`) |
+| Hosting | Cloudflare Pages (edge CDN) |
+| Search | Algolia (client-side React Island) |
+| Text reader | Cloudflare Pages Function (`/api/read`) |
+| Import pipeline | Python 3.13 + `uv`, runs as Cloud Run Job |
+| Scheduling | Cloud Scheduler → Cloud Run Job (daily) |
+| CI/CD | Cloud Build (build image + update job on git push) |
+| Watermark state | Cloudflare R2 (`watermark.json`) |
 
-The application rigorously separates concerns between server and client to optimize performance and SEO.
+---
 
-### Server Components (`.tsx`)
-By default, components in `app/` are Server Components. They render on the server, fetching data directly from Firestore before sending HTML to the client. This reduces client-side JavaScript bundle size.
-
-**Key Server Components:**
-- **`app/page.tsx`**: The main entry point. Fetches `recentBooks` directly from Firestore server-side and renders the initial list.
-- **`components/BookCard.tsx`**: Purely presentational component that renders book details. Since it requires no interactivity, it remains a server component.
-- **`app/layout.tsx`**: Defines the global application shell.
-
-### Client Components (`'use client'`)
-Client Components are opted-in via the `'use client'` directive. These handle user interactivity and browser APIs.
-
-**Key Client Components:**
-- **`components/SearchSection.tsx`**: Handles the live search UI.
-  - Manages input state (`useState`).
-  - Debounces user input.
-  - Invokes the `search()` Server Action to fetch results.
-  - Renders interactive search results dropdown.
-- **`components/SearchInput.tsx`**: A reusable input component for handling navigation-based search queries.
-
-### Server Actions (`actions.ts`)
-Server Actions provide a secure way to execute server-side logic from Client Components without creating a separate API route.
-
-- **`search(query)`**:
-  - Located in `app/actions.ts`.
-  - Called directly by `SearchSection.tsx`.
-  - Issues a single Algolia multi-index query across `books` and `persons`.
-  - Returns matched books and persons to the client.
-
-## System Architecture Diagram
+## System Architecture
 
 ```mermaid
 graph TD
-    User[User]
+    GitHub["GitHub\n(main branch)"]
 
-    subgraph Client[Client Side]
-        Browser[Browser]
-    end
-
-    subgraph GCP[Google Cloud Platform]
-        CloudRun["Cloud Run<br/>(Next.js App)"]
-        Firestore[(Firestore)]
+    subgraph GCP["Google Cloud Platform"]
+        CloudBuild["Cloud Build\n(on git push)"]
+        ArtifactRegistry["Artifact Registry\n(Docker image)"]
         SecretManager["Secret Manager"]
+        CloudScheduler["Cloud Scheduler\n(daily, 03:00 JST)"]
+        CloudRunJob["Cloud Run Job\naozora-importer"]
     end
 
-    subgraph External[External Services]
-        Algolia["Algolia<br/>(Full-text Search)"]
-        R2["Cloudflare R2<br/>(Text Files)"]
-        AozoraHTML["aozora.ksato9700.com<br/>(HTML Mirror)"]
+    subgraph Pipeline["Cloud Run Job execution"]
+        CSV["Aozora CSV\n(aozora.gr.jp)"]
+        Python["Python importer\n(AozoraJSON)"]
+        Algolia["Algolia\n(incremental update)"]
+        R2w["R2 watermark.json\n(write)"]
+        AstroBuild["npx astro build"]
+        Wrangler["wrangler pages deploy"]
     end
 
-    User --> Browser
+    subgraph Cloudflare["Cloudflare"]
+        Pages["Cloudflare Pages\n(CDN edge)"]
+        PagesFunc["Pages Function\n(/api/read)"]
+        R2["R2\n(text files + watermark)"]
+    end
 
-    %% Web Application Flow
-    Browser -- "HTTPS Request" --> CloudRun
-    CloudRun -- "Server Components Render" --> Browser
+    User["User (Browser)"]
 
-    %% Data Access
-    CloudRun -- "Query Data" --> Firestore
-    CloudRun -- "Search Query" --> Algolia
+    GitHub -->|git push| CloudBuild
+    CloudBuild -->|build & push image| ArtifactRegistry
+    CloudBuild -->|update job image| CloudRunJob
 
-    %% Secrets
-    SecretManager -. "API Keys at runtime" .-> CloudRun
+    CloudScheduler -->|daily trigger| CloudRunJob
+    CloudRunJob -->|pulls image from| ArtifactRegistry
+    CloudRunJob -->|runs| Pipeline
+    SecretManager -.->|secrets at runtime| CloudRunJob
 
-    %% Content Delivery
-    CloudRun -. "Fetch Text (for Reader)" .-> R2
-    Browser -- "Direct Download (.txt)" --> R2
-    Browser -- "iframe (HTML)" --> AozoraHTML
+    CSV --> Python
+    Python --> Algolia
+    Python --> R2w
+    Python --> AstroBuild
+    AstroBuild --> Wrangler
+    Wrangler --> Pages
+
+    User -->|HTTPS| Pages
+    Pages -->|/api/read| PagesFunc
+    PagesFunc -->|fetch text file| R2
+    User -->|Algolia search| Algolia
+    User -->|iframe| AozoraHTML["aozora.ksato9700.com\n(HTML mirror)"]
 ```
 
-## Data Flow & Interaction Diagram
+---
 
-```mermaid
-sequenceDiagram
-    participant User
-    participant Browser as Client (Browser)
-    participant Server as Next.js Server (Cloud Run)
-    participant Firestore as Google Cloud Firestore
-    participant Algolia as Algolia
+## Component Architecture
 
-    Note over Server, Firestore: Server Components (Server-Side Rendering)
+### Astro Pages (build-time)
 
-    User->>Browser: Access Homepage (/)
-    Browser->>Server: HTTP GET /
-    Server->>Firestore: getRecentBooks()
-    Firestore-->>Server: Book Data
-    Server-->>Browser: HTML (Pre-rendered content)
+All pages call `getData()` at build time. `getData()` loads the three JSON files via Vite static imports and builds in-memory Maps.
 
-    Note over Browser, Algolia: Client Components & Server Actions
+| Page | Route | Description |
+|---|---|---|
+| `index.astro` | `/` | Home — 24 most recent books |
+| `books/[bookId].astro` | `/books/:id` | Book detail |
+| `books/new/[...page].astro` | `/books/new/:page` | Paginated new books |
+| `persons/[personId].astro` | `/persons/:id` | Author profile |
+| `read/index.astro` | `/read/` | Reader SPA shell (client-only) |
+| `api/books-for-reader.json.ts` | `/api/books-for-reader.json` | Minimal book data for reader |
 
-    User->>Browser: Types in Search Bar (SearchSection)
-    Browser->>Browser: Debounce Input
-    Browser->>Server: Call Server Action: search(query)
-    Server->>Algolia: Multi-index query (books + persons)
-    Algolia-->>Server: Ranked results
-    Server-->>Browser: Serialized Search Results
-    Browser->>Browser: Update UI (Show Dropdown)
-    User->>Browser: Click Result
-    Browser->>Browser: Navigation (Client-side transition)
+### React Islands (client-side)
+
+Islands hydrate independently in the browser. The rest of the page is plain HTML with no JS.
+
+| Component | Trigger | Description |
+|---|---|---|
+| `SearchSection.tsx` | `client:load` | Debounced Algolia search dropdown |
+| `ReaderPage.tsx` | `client:only="react"` | Reads bookId from URL, fetches book data, renders reader |
+| `ReaderIsland.tsx` | rendered by ReaderPage | HTML/text mode toggle, iframe + text renderer |
+
+### Cloudflare Pages Function
+
+`functions/api/read.ts` handles text file proxying:
+- Receives `?src=<encoded-url>` from the browser
+- Fetches the `.txt` or `.zip` from the given URL
+- Decodes Shift_JIS using `TextDecoder('shift_jis')`
+- Returns UTF-8 text to the browser
+
+---
+
+## Reader SPA Routing
+
+The `/read/[bookId]` URL pattern used to generate ~17,700 static HTML files (one per book), which exceeded Cloudflare Pages' 20,000 file limit. It is now implemented as a single-page app:
+
+```
+astro/public/_redirects:
+  /read/* /read/ 200        ← Cloudflare Pages rewrites all /read/* to /read/index.html
+
+ReaderPage.tsx (client:only):
+  1. Read bookId from window.location.pathname (/read/012345 → "012345")
+  2. Fetch /api/books-for-reader.json (minimal book data, ~2–3 MB, cached)
+  3. Render ReaderIsland with title, text_url, html_url
 ```
 
-## Directory Structure Map
+---
+
+## Data Flow
+
+### Build time
 
 ```
-web/src/
-├── app/
-│   ├── page.tsx          # [Server] Main landing page, fetches data
-│   ├── layout.tsx        # [Server] Root layout
-│   └── actions.ts        # [Server Action] search() — delegates to Algolia
-├── components/
-│   ├── BookCard.tsx      # [Server] Stateless UI for book display
-│   ├── SearchSection.tsx # [Client] Stateful search with dropdown
-│   └── SearchInput.tsx   # [Client] Input managing URL params
-└── lib/
-    ├── algolia/          # [Server] Algolia client and unified search
-    │   ├── client.ts
-    │   └── search.ts
-    └── firestore/        # [Server] Data access layer (Firestore SDK)
-        ├── books.ts
-        ├── persons.ts
-        └── contributors.ts
+books.json  ──┐
+persons.json ──┤── data.ts (Vite import) ──► getStaticPaths() ──► HTML files
+contributors.json ──┘
 ```
+
+### Runtime (search)
+
+```
+Browser keystroke
+  └──► SearchSection.tsx (debounce)
+         └──► Algolia API (client-side, search-only key)
+                └──► ranked hits → dropdown
+```
+
+### Runtime (reader)
+
+```
+User visits /read/012345
+  └──► Cloudflare Pages serves /read/index.html (via _redirects rewrite)
+         └──► ReaderPage.tsx hydrates
+                └──► fetch /api/books-for-reader.json
+                └──► render ReaderIsland
+                       └──► HTML mode: <iframe src="aozora.ksato9700.com/...">
+                       └──► Text mode: fetch /api/read?src=<R2-url>
+                                         └──► Pages Function → R2 → UTF-8 text
+```
+
+---
+
+## Import Pipeline Detail
+
+```
+aozora_data/importer/main.py
+  │
+  ├── AozoraJSON()               ← in-memory accumulator
+  ├── import_from_csv_url()      ← download + parse CSV
+  │     ├── _process_row()       ← upsert_book / upsert_person / upsert_contributor
+  │     └── _sync_algolia()      ← send changed records to Algolia
+  ├── db.flush(DATA_DIR)         ← write books.json / persons.json / contributors.json
+  └── db.save_watermark()        ← write watermark.json to R2
+```
+
+The `AozoraDB` Protocol (`db/__init__.py`) defines the interface shared by `AozoraJSON` and the legacy `AozoraFirestore`.
+
+---
+
+## Environment Variables
+
+| Variable | Used by | Source |
+|---|---|---|
+| `R2_ACCOUNT_ID` | Python (boto3) | Secret Manager |
+| `R2_ACCESS_KEY_ID` | Python (boto3) | Secret Manager |
+| `R2_SECRET_ACCESS_KEY` | Python (boto3) | Secret Manager |
+| `R2_BUCKET_NAME` | Python (boto3) | Cloud Run Job env var |
+| `ALGOLIA_APP_ID` | Python + Astro build | Secret Manager |
+| `ALGOLIA_ADMIN_KEY` | Python | Secret Manager |
+| `PUBLIC_ALGOLIA_APP_ID` | Astro build (client) | Secret Manager |
+| `PUBLIC_ALGOLIA_SEARCH_KEY` | Astro build (client) | Secret Manager |
+| `CLOUDFLARE_API_TOKEN` | wrangler | Secret Manager |
+| `CLOUDFLARE_ACCOUNT_ID` | wrangler | Cloud Run Job env var |

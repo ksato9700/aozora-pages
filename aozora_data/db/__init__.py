@@ -2,7 +2,7 @@ from typing import Any, Protocol
 
 
 class AozoraDB(Protocol):
-    """Interface shared by AozoraFirestore and AozoraJSON."""
+    """Interface for Aozora data backends (implemented by AozoraJSON)."""
 
     def get_watermark(self) -> str | None:
         """Return the last-processed date, or None if not set."""

@@ -70,7 +70,6 @@ FIELD_NAMES = (
 
 def _parse_date(val: str) -> str | None:
     """Return date string as is, or None if empty."""
-    # Firestore can store strings or datetime objects.
     # The CSV date format is typically YYYY-MM-DD.
     return val if val else None
 
@@ -108,7 +107,7 @@ def _process_row(
     algolia_books: dict,
     algolia_persons: dict,
 ) -> None:
-    """Upsert one CSV row (book, person, contributor) into Firestore and collect Algolia records."""
+    """Upsert one CSV row (book, person, contributor) into the DB and collect Algolia records."""
     book_id = row["book_id"]
     person_id = row["person_id"]
 

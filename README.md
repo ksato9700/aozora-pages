@@ -4,9 +4,13 @@ A modern platform for Aozora Bunko (青空文庫), providing a beautiful reading
 
 ## Project Structure
 
-- **[web](./web)**: The Next.js web application for browsing and reading books.
-- **[DATA_FORMAT.md](./DATA_FORMAT.md)**: Documentation of the text data format and Firestore schema.
+- **[astro/](./astro)**: Astro 6.0 static site (pages, components, Cloudflare Pages Function)
+- **[aozora_data/](./aozora_data)**: Python import pipeline (CSV → JSON files → Algolia)
+- **[docs/](./docs)**: Architecture, data format, and setup documentation
 
-## Getting Started
+## Documentation
 
-To run the web application, please verify the [README](./web/README.md) in the `web` directory.
+- [OVERVIEW.md](./docs/OVERVIEW.md) — tech stack, routes, daily pipeline
+- [ARCHITECTURE.md](./docs/ARCHITECTURE.md) — system diagram and component architecture
+- [DATA_FORMAT.md](./docs/DATA_FORMAT.md) — JSON file schema reference
+- [SETUP_CLOUDRUN.md](./docs/SETUP_CLOUDRUN.md) — one-time Cloud Run Job setup
