@@ -1,25 +1,35 @@
-# Version control
+# Inherit all .gitignore rules
+#!include:.gitignore
+
+.gcloudignore
 .git
 .gitignore
 
-# Dependencies
-# Dependencies
-node_modules
-**/node_modules
-web/node_modules
+# Python artifacts
+.venv
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+py_aozora_data.egg-info/
 
-# Build output
-dist
-out
-build
-.next
-**/.next
-web/.next
+# Large local data files not needed for the Docker build
+list_person_all_extended_utf8*
+sjis/
+sjis_html/
+utf-8/
+utf-8_html/
+jisx0213-2004-std.txt
+css/
+*.html
 
-# OS
-.DS_Store
+# Not used by the Dockerfile
+tests/
+docs/
+scripts/
+web/
 
-# Logs
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
+# Astro generated artifacts (the source is needed, not the build output)
+astro/node_modules/
+astro/dist/
+astro/data/

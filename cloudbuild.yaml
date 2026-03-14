@@ -1,31 +1,62 @@
 steps:
-  # Build the container image
+  # 1. Build the container image
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['build', '-t', 'asia-northeast1-docker.pkg.dev/$PROJECT_ID/aozora/web:$COMMIT_SHA', '-f', 'web/Dockerfile', 'web']
+    args:
+      - 'build'
+      - '-t'
+      - '${_REGION}-docker.pkg.dev/$PROJECT_ID/aozora/importer:$COMMIT_SHA'
+      - '-t'
+      - '${_REGION}-docker.pkg.dev/$PROJECT_ID/aozora/importer:latest'
+      - '.'
 
-  # Push the container image to Artifact Registry
+  # 2. Push the container image to Artifact Registry
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['push', 'asia-northeast1-docker.pkg.dev/$PROJECT_ID/aozora/web:$COMMIT_SHA']
+    args: ['push', '--all-tags', '${_REGION}-docker.pkg.dev/$PROJECT_ID/aozora/importer']
 
-  # Deploy container image to Cloud Run
+  # 3. Update the Cloud Run Job to use the new image and latest secrets
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: gcloud
     args:
       - 'run'
-      - 'deploy'
-      - 'aozora-pages-web'
+      - 'jobs'
+      - 'update'
+      - 'aozora-importer'
       - '--image'
-      - 'asia-northeast1-docker.pkg.dev/$PROJECT_ID/aozora/web:$COMMIT_SHA'
+      - '${_REGION}-docker.pkg.dev/$PROJECT_ID/aozora/importer:$COMMIT_SHA'
       - '--region'
-      - 'asia-northeast1'
-      - '--platform'
-      - 'managed'
-      - '--allow-unauthenticated'
+      - '${_REGION}'
+      - '--execution-environment'
+      - 'gen2'
+      - '--cpu'
+      - '2'
+      - '--memory'
+      - '4Gi'
+      - '--ephemeral-storage'
+      - '2Gi'
+      - '--task-timeout'
+      - '900s'
+      - '--max-retries'
+      - '1'
+      - '--set-env-vars'
+      - 'R2_BUCKET_NAME=${_R2_BUCKET_NAME},CLOUDFLARE_ACCOUNT_ID=${_CLOUDFLARE_ACCOUNT_ID}'
       - '--update-secrets'
-      - 'ALGOLIA_APP_ID=ALGOLIA_APP_ID:latest,ALGOLIA_SEARCH_KEY=ALGOLIA_SEARCH_KEY:latest'
+      - >-
+        R2_ACCOUNT_ID=R2_ACCOUNT_ID:latest,
+        R2_ACCESS_KEY_ID=R2_ACCESS_KEY_ID:latest,
+        R2_SECRET_ACCESS_KEY=R2_SECRET_ACCESS_KEY:latest,
+        ALGOLIA_APP_ID=ALGOLIA_APP_ID:latest,
+        ALGOLIA_ADMIN_KEY=ALGOLIA_ADMIN_KEY:latest,
+        PUBLIC_ALGOLIA_SEARCH_KEY=ALGOLIA_SEARCH_KEY:latest,
+        CLOUDFLARE_API_TOKEN=CLOUDFLARE_API_TOKEN:latest
 
-images:
-  - 'asia-northeast1-docker.pkg.dev/$PROJECT_ID/aozora/web:$COMMIT_SHA'
+substitutions:
+  _REGION: asia-northeast1
+  _R2_BUCKET_NAME: aozora-pages
+  _CLOUDFLARE_ACCOUNT_ID: ''  # set in Cloud Build trigger substitutions
 
 options:
   logging: CLOUD_LOGGING_ONLY
+
+images:
+  - '${_REGION}-docker.pkg.dev/$PROJECT_ID/aozora/importer:$COMMIT_SHA'
+  - '${_REGION}-docker.pkg.dev/$PROJECT_ID/aozora/importer:latest'
