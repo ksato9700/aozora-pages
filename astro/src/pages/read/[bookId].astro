@@ -1,0 +1,103 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import ReaderIsland from '../../components/ReaderIsland';
+import { getData } from '../../lib/data';
+
+export async function getStaticPaths() {
+  const { books } = await getData();
+
+  return [...books.values()]
+    .filter((book) => book.text_url || book.html_url)
+    .map((book) => ({
+      params: { bookId: book.book_id },
+      props: { book },
+    }));
+}
+
+const { book } = Astro.props;
+const bookId = book.book_id;
+
+// For books without copyright, use the public mirror; otherwise use the stored URL.
+const htmlUrl = !book.copyright
+  ? `https://aozora.ksato9700.com/${bookId.padStart(6, '0')}.utf8.html`
+  : (book.html_url ?? undefined);
+
+// text_url is embedded as a prop so the Reader Island can pass it to the Worker.
+const textUrl = book.text_url ?? '';
+---
+
+<Layout title={`${book.title} — 読む — Aozora Pages`}>
+  <main class="reader-main">
+    <header class="reader-header">
+      <div class="header-left">
+        <a href={`/books/${bookId}`} class="back-link">← 詳細に戻る</a>
+        <h1 class="reader-title">{book.title}</h1>
+      </div>
+    </header>
+
+    {textUrl || htmlUrl ? (
+      <ReaderIsland
+        client:load
+        bookId={bookId}
+        textUrl={textUrl}
+        title={book.title}
+        htmlUrl={htmlUrl}
+      />
+    ) : (
+      <div class="no-content">
+        <p class="text-muted">このコンテンツは利用できません。</p>
+      </div>
+    )}
+  </main>
+</Layout>
+
+<style>
+  .reader-main {
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .reader-header {
+    padding: 1rem 2rem;
+    background: rgba(15, 23, 42, 0.9);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: sticky;
+    top: 0;
+    z-index: 50;
+  }
+
+  .header-left {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  .back-link {
+    color: var(--primary);
+    font-size: 0.875rem;
+    font-weight: 600;
+  }
+
+  .back-link:hover {
+    text-decoration: underline;
+  }
+
+  .reader-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    font-family: var(--font-serif);
+  }
+
+  .no-content {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+</style>

@@ -1,0 +1,134 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import BookCard from '../../components/BookCard.astro';
+import { getData } from '../../lib/data';
+import { ROLES } from '../../types/aozora';
+import type { Work } from '../../lib/data';
+
+export async function getStaticPaths() {
+  const { persons, contributorsByPerson } = await getData();
+
+  return [...persons.values()].map((person) => ({
+    params: { personId: person.person_id },
+    props: {
+      person,
+      works: contributorsByPerson.get(person.person_id) ?? [],
+    },
+  }));
+}
+
+const { person, works } = Astro.props;
+
+// Group works by role label
+const worksByRole = works.reduce<Record<string, Work[]>>((acc, w) => {
+  const roleName = ROLES[w.role] ?? 'その他';
+  if (!acc[roleName]) acc[roleName] = [];
+  acc[roleName].push(w);
+  return acc;
+}, {});
+---
+
+<Layout title={`${person.last_name} ${person.first_name} — Aozora Pages`}>
+  <main class="main">
+    <div class="container">
+      <header class="profile-header">
+        <div class="avatar">{person.last_name[0]}</div>
+        <h1 class="name">{person.last_name} {person.first_name}</h1>
+        <p class="yomi">{person.last_name_yomi} {person.first_name_yomi}</p>
+        <div class="meta">
+          {person.date_of_birth && <span>生年: {person.date_of_birth}</span>}
+          {person.date_of_death && <span>没年: {person.date_of_death}</span>}
+        </div>
+      </header>
+
+      <div>
+        {Object.entries(worksByRole).map(([role, roleWorks]) => (
+          <section class="role-group">
+            <h2 class="section-title">{role}</h2>
+            <div class="grid">
+              {roleWorks.map((work) => (
+                <BookCard book={work.book} />
+              ))}
+            </div>
+          </section>
+        ))}
+
+        {works.length === 0 && (
+          <p class="text-muted" style="text-align: center;">No works found in database.</p>
+        )}
+      </div>
+    </div>
+  </main>
+</Layout>
+
+<style>
+  .main {
+    min-height: 100vh;
+    padding: 4rem 0;
+  }
+
+  .profile-header {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    margin-bottom: 4rem;
+    padding-bottom: 3rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .avatar {
+    width: 8rem;
+    height: 8rem;
+    background: var(--foreground);
+    color: var(--background);
+    border-radius: 50%;
+    border: 4px solid var(--primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 3rem;
+    font-weight: 700;
+    font-family: var(--font-serif);
+    margin-bottom: 1.5rem;
+    box-shadow: 0 0 20px rgba(56, 189, 248, 0.3);
+  }
+
+  .name {
+    font-size: 3rem;
+    font-weight: 800;
+    margin-bottom: 0.5rem;
+    font-family: var(--font-serif);
+  }
+
+  .yomi {
+    font-size: 1.25rem;
+    color: var(--muted);
+    margin-bottom: 1rem;
+  }
+
+  .meta {
+    display: flex;
+    gap: 1.5rem;
+    color: var(--muted);
+    font-size: 0.875rem;
+  }
+
+  .role-group {
+    margin-bottom: 4rem;
+  }
+
+  .section-title {
+    font-size: 1.75rem;
+    font-weight: 700;
+    margin-bottom: 2rem;
+    border-left: 4px solid var(--accent);
+    padding-left: 1rem;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 2rem;
+  }
+</style>
