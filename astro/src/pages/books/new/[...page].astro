@@ -1,0 +1,130 @@
+---
+import Layout from '../../../layouts/Layout.astro';
+import BookCard from '../../../components/BookCard.astro';
+import { getData } from '../../../lib/data';
+
+export async function getStaticPaths() {
+  const PAGE_SIZE = 24;
+  const { booksSortedByDate } = await getData();
+
+  // Generate enough pages to show up to 500 recent books
+  const totalPages = Math.ceil(Math.min(booksSortedByDate.length, 500) / PAGE_SIZE);
+
+  return Array.from({ length: totalPages }, (_, i) => {
+    const page = i + 1;
+    const start = i * PAGE_SIZE;
+    const books = booksSortedByDate.slice(start, start + PAGE_SIZE);
+
+    return {
+      // page 1 → path /books/new, page 2 → /books/new/2, etc.
+      params: { page: page === 1 ? undefined : String(page) },
+      props: { books, page, totalPages },
+    };
+  });
+}
+
+const { books, page, totalPages } = Astro.props;
+const prevPage = page > 1 ? page - 1 : null;
+const nextPage = page < totalPages ? page + 1 : null;
+---
+
+<Layout title="新着図書 — Aozora Pages">
+  <main class="main">
+    <div class="container">
+      <header class="header">
+        <div class="mb-4">
+          <a href="/" class="back-link">&larr; Back to Home</a>
+        </div>
+        <h1 class="title">
+          <span class="text-gradient">新着図書</span>
+        </h1>
+        {totalPages > 1 && (
+          <p class="text-muted" style="font-size: 0.875rem; margin-top: 0.5rem;">
+            ページ {page} / {totalPages}
+          </p>
+        )}
+      </header>
+
+      {books.length > 0 ? (
+        <>
+          <div class="grid">
+            {books.map((book) => (
+              <BookCard book={book} authorName={book.author_name} />
+            ))}
+          </div>
+
+          <div class="pagination">
+            {prevPage ? (
+              <a href={prevPage === 1 ? '/books/new' : `/books/new/${prevPage}`} class="page-link">
+                &larr; 前のページ
+              </a>
+            ) : <span />}
+            {nextPage && (
+              <a href={`/books/new/${nextPage}`} class="page-link">
+                次のページ &rarr;
+              </a>
+            )}
+          </div>
+        </>
+      ) : (
+        <div class="glass-panel" style="padding: 2rem; text-align: center; border-radius: 0.75rem;">
+          <p class="text-muted">No books found.</p>
+        </div>
+      )}
+    </div>
+  </main>
+</Layout>
+
+<style>
+  .main {
+    min-height: 100vh;
+    padding: 3rem 0;
+  }
+
+  .header {
+    text-align: center;
+    margin-bottom: 3rem;
+  }
+
+  .title {
+    font-size: 2.5rem;
+    font-weight: 800;
+  }
+
+  .back-link {
+    color: var(--muted);
+    font-size: 0.875rem;
+    transition: color 0.2s;
+  }
+
+  .back-link:hover {
+    color: var(--foreground);
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 2rem;
+  }
+
+  .pagination {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 2rem;
+  }
+
+  .page-link {
+    padding: 0.5rem 1.5rem;
+    border-radius: 9999px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--foreground);
+    font-size: 0.875rem;
+    transition: all 0.2s;
+  }
+
+  .page-link:hover {
+    background: rgba(255, 255, 255, 0.15);
+  }
+</style>

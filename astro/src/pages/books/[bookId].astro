@@ -1,0 +1,222 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import PersonCard from '../../components/PersonCard.astro';
+import { getData } from '../../lib/data';
+import { ROLES } from '../../types/aozora';
+
+export async function getStaticPaths() {
+  const { books, contributorsByBook } = await getData();
+
+  return [...books.values()].map((book) => ({
+    params: { bookId: book.book_id },
+    props: {
+      book,
+      contributors: contributorsByBook.get(book.book_id) ?? [],
+    },
+  }));
+}
+
+const { book, contributors } = Astro.props;
+const bookId = book.book_id;
+
+const downloadTextUrl = book.copyright
+  ? book.text_url
+  : `https://aozora.ksato9700.com/${bookId.padStart(6, '0')}.utf8.txt`;
+---
+
+<Layout title={`${book.title} — Aozora Pages`}>
+  <main class="main">
+    <div class="container">
+      <header class="hero">
+        <div class="title-yomi">{book.title_yomi}</div>
+        <h1 class="title">{book.title}</h1>
+        {book.subtitle && (
+          <div style="margin-bottom: 1rem;">
+            <div style="font-size: 0.75rem; color: #9ca3af;">{book.subtitle_yomi}</div>
+            <p class="subtitle">{book.subtitle}</p>
+          </div>
+        )}
+
+        <div class="actions">
+          {book.text_url && (
+            <>
+              <a href={`/read/${bookId}?format=html`} class="button primary-button">今すぐ読む</a>
+              <a
+                href={downloadTextUrl}
+                class="button secondary-button"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                テキストファイルをダウンロード
+              </a>
+            </>
+          )}
+        </div>
+      </header>
+
+      <div class="space-y-12 mb-16">
+        <div class="mb-6">
+          <h2 class="section-title">作品</h2>
+          <table class="w-full text-sm text-left">
+            <tbody>
+              <tr class="border-b border-gray-200">
+                <th class="text-left font-bold text-red-800 w-32">公開日</th>
+                <td>{book.release_date || '-'}</td>
+              </tr>
+              <tr class="border-b border-gray-200">
+                <th class="text-left font-bold text-red-800 w-32">文字遣い種別</th>
+                <td>{book.font_kana_type || '-'}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="mb-6">
+          <h2 class="section-title">作家</h2>
+          {contributors.length > 0 ? (
+            <div class="grid">
+              {contributors.map((c) => (
+                <div>
+                  <div class="role-label">{ROLES[c.role] ?? 'Contributor'}</div>
+                  <PersonCard person={c.person} />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p class="text-muted">作家の記録はありません。</p>
+          )}
+        </div>
+
+        <div class="mb-6">
+          <h2 class="section-title">底本</h2>
+          <table class="w-full text-sm text-left">
+            <tbody>
+              <tr class="border-b border-gray-200">
+                <th class="text-left font-bold text-red-800 w-32">底本</th>
+                <td>{book.base_book_1 || '-'}</td>
+              </tr>
+              <tr class="border-b border-gray-200">
+                <th class="text-left font-bold text-red-800 w-32">出版社</th>
+                <td>{book.base_book_1_publisher || '-'}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div>
+          <h2 class="section-title">工作員</h2>
+          <table class="w-full text-sm text-left">
+            <tbody>
+              <tr class="border-b border-gray-200">
+                <th class="text-left font-bold text-red-800 w-32">入力者</th>
+                <td>{book.input || '-'}</td>
+              </tr>
+              <tr class="border-b border-gray-200">
+                <th class="text-left font-bold text-red-800 w-32">校正者</th>
+                <td>{book.proofing || '-'}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </main>
+</Layout>
+
+<style>
+  .main {
+    min-height: 100vh;
+    padding: 4rem 0;
+  }
+
+  .hero {
+    text-align: center;
+    margin-bottom: 4rem;
+    padding-bottom: 3rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .title-yomi {
+    margin-bottom: 0.5rem;
+    font-size: 0.875rem;
+    color: #6b7280;
+  }
+
+  .title {
+    font-size: 3.5rem;
+    font-weight: 800;
+    margin-bottom: 0.5rem;
+    font-family: var(--font-serif);
+    line-height: 1.2;
+  }
+
+  .subtitle {
+    font-size: 1.5rem;
+    color: var(--muted);
+    margin-bottom: 2rem;
+  }
+
+  .actions {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+    margin-bottom: 3rem;
+  }
+
+  .button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.75rem 2rem;
+    border-radius: 9999px;
+    font-weight: 600;
+    transition: all 0.2s ease;
+    text-decoration: none;
+  }
+
+  .primary-button {
+    background: var(--primary);
+    color: var(--background);
+  }
+
+  .primary-button:hover {
+    background: #0ea5e9;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(56, 189, 248, 0.4);
+  }
+
+  .secondary-button {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--foreground);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+  }
+
+  .secondary-button:hover {
+    background: rgba(255, 255, 255, 0.2);
+    transform: translateY(-2px);
+  }
+
+  .section-title {
+    font-size: 1.75rem;
+    font-weight: 700;
+    margin-bottom: 2rem;
+    margin-top: 3rem;
+    border-left: 4px solid var(--accent);
+    padding-left: 1rem;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 1.5rem;
+  }
+
+  .role-label {
+    margin-bottom: 0.5rem;
+    font-size: 0.875rem;
+    color: var(--accent);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+</style>

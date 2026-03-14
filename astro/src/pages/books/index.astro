@@ -1,0 +1,74 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import BookCard from '../../components/BookCard.astro';
+import SearchSection from '../../components/SearchSection';
+import { getData } from '../../lib/data';
+
+// Pre-render recent books as the default view.
+// Client-side Algolia in SearchSection handles query-based search.
+const { booksSortedByDate } = await getData();
+const recentBooks = booksSortedByDate.slice(0, 20);
+---
+
+<Layout title="図書一覧 — Aozora Pages">
+  <main class="main">
+    <div class="container">
+      <header class="header">
+        <a href="/" class="back-link">&larr; ホームへ</a>
+        <h1 class="title"><span class="text-gradient">図書を探す</span></h1>
+      </header>
+
+      <SearchSection client:load />
+
+      <section style="margin-top: 2rem;">
+        <h2 class="section-title">最近の図書</h2>
+        <div class="grid">
+          {recentBooks.map((book) => (
+            <BookCard book={book} authorName={book.author_name} />
+          ))}
+        </div>
+      </section>
+    </div>
+  </main>
+</Layout>
+
+<style>
+  .main {
+    min-height: 100vh;
+    padding: 3rem 0;
+  }
+
+  .header {
+    margin-bottom: 2rem;
+  }
+
+  .back-link {
+    color: var(--muted);
+    font-size: 0.875rem;
+    display: inline-block;
+    margin-bottom: 1rem;
+  }
+
+  .back-link:hover {
+    color: var(--foreground);
+  }
+
+  .title {
+    font-size: 2.5rem;
+    font-weight: 800;
+  }
+
+  .section-title {
+    font-size: 1.75rem;
+    font-weight: 700;
+    margin-bottom: 2rem;
+    border-left: 4px solid var(--primary);
+    padding-left: 1rem;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 2rem;
+  }
+</style>

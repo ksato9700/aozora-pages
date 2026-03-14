@@ -1,0 +1,92 @@
+---
+import Layout from '../layouts/Layout.astro';
+import BookCard from '../components/BookCard.astro';
+import SearchSection from '../components/SearchSection';
+import { getData } from '../lib/data';
+
+const { booksSortedByDate } = await getData();
+const recentBooks = booksSortedByDate.slice(0, 6);
+---
+
+<Layout title="Aozora Pages" description="不朽の名作を、美しいレイアウトで。">
+  <main class="main">
+    <div class="container">
+      <header class="header">
+        <h1 class="title">
+          <span class="text-gradient">Aozora Pages</span>
+        </h1>
+        <p class="subtitle">不朽の名作を、美しいレイアウトで。</p>
+      </header>
+
+      <SearchSection client:load />
+
+      <section style="margin-top: 30pt;">
+        <div class="flex justify-between items-end mb-8 w-full">
+          <h2 class="section-title" style="margin-bottom: 0;">新着図書</h2>
+          <a href="/books/new" class="more-link">もっと見る &rarr;</a>
+        </div>
+
+        {recentBooks.length > 0 ? (
+          <div class="grid">
+            {recentBooks.map((book) => (
+              <BookCard book={book} authorName={book.author_name} />
+            ))}
+          </div>
+        ) : (
+          <div class="glass-panel" style="padding: 2rem; text-align: center; border-radius: 0.75rem;">
+            <p class="text-muted">No books found. Check database connection.</p>
+          </div>
+        )}
+      </section>
+    </div>
+  </main>
+</Layout>
+
+<style>
+  .main {
+    min-height: 100vh;
+    padding: 3rem 0;
+  }
+
+  .header {
+    text-align: center;
+    margin-bottom: 4rem;
+  }
+
+  .title {
+    font-size: 3.5rem;
+    font-weight: 800;
+    margin-bottom: 1rem;
+    letter-spacing: -0.02em;
+  }
+
+  .subtitle {
+    font-size: 1.25rem;
+    color: var(--muted);
+    max-width: 600px;
+    margin: 0 auto;
+  }
+
+  .section-title {
+    font-size: 1.75rem;
+    font-weight: 700;
+    margin-bottom: 2rem;
+    border-left: 4px solid var(--primary);
+    padding-left: 1rem;
+  }
+
+  .more-link {
+    font-size: 0.875rem;
+    color: var(--primary);
+  }
+
+  .more-link:hover {
+    text-decoration: underline;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 2rem;
+  }
+</style>
