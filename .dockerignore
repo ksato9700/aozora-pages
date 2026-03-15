@@ -1,0 +1,26 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+*.egg-info/
+
+# Node / Astro
+astro/node_modules/
+astro/dist/
+astro/.astro/
+
+# Local data dirs (large, not needed in image)
+sjis/
+utf-8/
+utf-8_html/
+astro/data/
+
+# Dev / editor
+.git/
+.github/
+docs/
+tests/
+scripts/
+.env*

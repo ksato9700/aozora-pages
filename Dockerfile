@@ -29,12 +29,9 @@ COPY aozora_data/algolia ./aozora_data/algolia
 # Copy Astro project source
 COPY astro /astro
 
-# Install Astro dependencies (cached as a layer; re-runs only when package-lock.json changes)
+# Install Astro dependencies including wrangler (cached as a layer; re-runs only when package-lock.json changes)
 WORKDIR /astro
 RUN npm ci
-
-# Install wrangler globally for Pages deployment
-RUN npm install -g wrangler
 
 WORKDIR /app
 
@@ -45,6 +42,4 @@ ENV PATH="/app/.venv/bin:$PATH"
 ENV DATA_DIR=/astro/data
 
 # Entrypoint: Python import → JSON files → astro build → wrangler pages deploy
-CMD python -m aozora_data.importer.main \
-    && cd /astro && npx astro build \
-    && wrangler pages deploy dist/ --project-name=aozora-pages
+CMD ["/bin/sh", "-c", "python -m aozora_data.importer.main && cd /astro && npx astro build && npx wrangler pages deploy dist/ --project-name=aozora-pages"]
