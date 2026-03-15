@@ -1,4 +1,7 @@
-# Python
+# Python — not needed for node build
+aozora_data/
+pyproject.toml
+uv.lock
 .venv/
 __pycache__/
 *.pyc
@@ -6,12 +9,12 @@ __pycache__/
 .pytest_cache/
 *.egg-info/
 
-# Node / Astro
+# Node / Astro build artifacts
 astro/node_modules/
 astro/dist/
 astro/.astro/
 
-# Local data dirs (large, not needed in image)
+# Local data dirs
 sjis/
 utf-8/
 utf-8_html/

@@ -1,0 +1,27 @@
+FROM python:3.13-slim AS builder
+
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /bin/uv
+
+WORKDIR /app
+
+COPY pyproject.toml uv.lock README.md ./
+RUN uv sync --frozen --no-dev --no-cache
+
+# ── Final image ───────────────────────────────────────────────────────────────
+FROM python:3.13-slim
+
+WORKDIR /app
+
+# Copy only the virtual environment (no uv binary)
+COPY --from=builder /app/.venv /app/.venv
+
+# Copy only the modules needed for the import pipeline
+COPY aozora_data/__init__.py ./aozora_data/__init__.py
+COPY aozora_data/db ./aozora_data/db
+COPY aozora_data/importer ./aozora_data/importer
+COPY aozora_data/algolia ./aozora_data/algolia
+
+ENV PATH="/app/.venv/bin:$PATH"
+ENV DATA_DIR=/astro/data
+
+CMD ["python", "-m", "aozora_data.importer.main"]

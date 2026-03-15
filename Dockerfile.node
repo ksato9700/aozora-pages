@@ -1,0 +1,21 @@
+FROM node:lts-slim AS builder
+
+WORKDIR /astro
+
+COPY astro/package.json astro/package-lock.json ./
+RUN npm ci
+
+# ── Final image ───────────────────────────────────────────────────────────────
+FROM node:lts-slim
+
+WORKDIR /astro
+
+# Copy node_modules without the npm cache left behind by npm ci
+COPY --from=builder /astro/node_modules ./node_modules
+
+# Copy Astro project source
+COPY astro .
+
+ENV DATA_DIR=/astro/data
+
+CMD ["/bin/sh", "-c", "node scripts/fetch-data.mjs && npx astro build && npx wrangler pages deploy dist/ --project-name=aozora-pages"]

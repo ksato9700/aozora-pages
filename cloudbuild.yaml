@@ -1,51 +1,73 @@
 steps:
-  # 1. Build the container image
+  # ── Python image ────────────────────────────────────────────────────────────
+
+  # 1. Build
   - name: 'gcr.io/cloud-builders/docker'
     args:
       - 'build'
-      - '-t'
-      - '${_REGION}-docker.pkg.dev/$PROJECT_ID/aozora/importer:$COMMIT_SHA'
-      - '-t'
-      - '${_REGION}-docker.pkg.dev/$PROJECT_ID/aozora/importer:latest'
+      - '-f', 'Dockerfile.python'
+      - '-t', '${_REGION}-docker.pkg.dev/$PROJECT_ID/aozora/python:${_COMMIT_SHA}'
+      - '-t', '${_REGION}-docker.pkg.dev/$PROJECT_ID/aozora/python:latest'
       - '.'
 
-  # 2. Push the container image to Artifact Registry
+  # 2. Push
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['push', '--all-tags', '${_REGION}-docker.pkg.dev/$PROJECT_ID/aozora/importer']
+    args: ['push', '--all-tags', '${_REGION}-docker.pkg.dev/$PROJECT_ID/aozora/python']
 
-  # 3. Update the Cloud Run Job to use the new image and latest secrets
+  # 3. Update aozora-python Cloud Run Job
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: gcloud
     args:
-      - 'run'
-      - 'jobs'
-      - 'update'
-      - 'aozora-importer'
-      - '--image'
-      - '${_REGION}-docker.pkg.dev/$PROJECT_ID/aozora/importer:$COMMIT_SHA'
-      - '--region'
-      - '${_REGION}'
-      - '--cpu'
-      - '2'
-      - '--memory'
-      - '4Gi'
-      - '--task-timeout'
-      - '900s'
-      - '--max-retries'
-      - '1'
-      - '--set-env-vars'
-      - 'R2_BUCKET_NAME=${_R2_BUCKET_NAME},CLOUDFLARE_ACCOUNT_ID=${_CLOUDFLARE_ACCOUNT_ID}'
-      - '--update-secrets'
-      - 'R2_ACCOUNT_ID=R2_ACCOUNT_ID:latest,R2_ACCESS_KEY_ID=R2_ACCESS_KEY_ID:latest,R2_SECRET_ACCESS_KEY=R2_SECRET_ACCESS_KEY:latest,ALGOLIA_APP_ID=ALGOLIA_APP_ID:latest,ALGOLIA_ADMIN_KEY=ALGOLIA_ADMIN_KEY:latest,PUBLIC_ALGOLIA_APP_ID=ALGOLIA_APP_ID:latest,PUBLIC_ALGOLIA_SEARCH_KEY=ALGOLIA_SEARCH_KEY:latest,CLOUDFLARE_API_TOKEN=CLOUDFLARE_API_TOKEN:latest'
+      - 'run', 'jobs', 'update', 'aozora-python'
+      - '--image', '${_REGION}-docker.pkg.dev/$PROJECT_ID/aozora/python:${_COMMIT_SHA}'
+      - '--region', '${_REGION}'
+      - '--cpu', '2'
+      - '--memory', '2Gi'
+      - '--task-timeout', '900s'
+      - '--max-retries', '1'
+      - '--set-env-vars', 'R2_BUCKET_NAME=${_R2_BUCKET_NAME},GOOGLE_CLOUD_PROJECT=$PROJECT_ID,GCP_REGION=${_REGION},NODE_JOB_NAME=aozora-node'
+      - '--update-secrets', 'R2_ACCOUNT_ID=R2_ACCOUNT_ID:latest,R2_ACCESS_KEY_ID=R2_ACCESS_KEY_ID:latest,R2_SECRET_ACCESS_KEY=R2_SECRET_ACCESS_KEY:latest,ALGOLIA_APP_ID=ALGOLIA_APP_ID:latest,ALGOLIA_ADMIN_KEY=ALGOLIA_ADMIN_KEY:latest,PUBLIC_ALGOLIA_APP_ID=ALGOLIA_APP_ID:latest,PUBLIC_ALGOLIA_SEARCH_KEY=ALGOLIA_SEARCH_KEY:latest'
+
+  # ── Node.js image ───────────────────────────────────────────────────────────
+
+  # 4. Build
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-f', 'Dockerfile.node'
+      - '-t', '${_REGION}-docker.pkg.dev/$PROJECT_ID/aozora/node:${_COMMIT_SHA}'
+      - '-t', '${_REGION}-docker.pkg.dev/$PROJECT_ID/aozora/node:latest'
+      - '.'
+
+  # 5. Push
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', '--all-tags', '${_REGION}-docker.pkg.dev/$PROJECT_ID/aozora/node']
+
+  # 6. Update aozora-node Cloud Run Job
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - 'run', 'jobs', 'update', 'aozora-node'
+      - '--image', '${_REGION}-docker.pkg.dev/$PROJECT_ID/aozora/node:${_COMMIT_SHA}'
+      - '--region', '${_REGION}'
+      - '--cpu', '2'
+      - '--memory', '4Gi'
+      - '--task-timeout', '600s'
+      - '--max-retries', '1'
+      - '--set-env-vars', 'R2_BUCKET_NAME=${_R2_BUCKET_NAME},CLOUDFLARE_ACCOUNT_ID=${_CLOUDFLARE_ACCOUNT_ID}'
+      - '--update-secrets', 'R2_ACCOUNT_ID=R2_ACCOUNT_ID:latest,R2_ACCESS_KEY_ID=R2_ACCESS_KEY_ID:latest,R2_SECRET_ACCESS_KEY=R2_SECRET_ACCESS_KEY:latest,PUBLIC_ALGOLIA_APP_ID=ALGOLIA_APP_ID:latest,PUBLIC_ALGOLIA_SEARCH_KEY=ALGOLIA_SEARCH_KEY:latest,CLOUDFLARE_API_TOKEN=CLOUDFLARE_API_TOKEN:latest'
 
 substitutions:
   _REGION: asia-northeast1
   _R2_BUCKET_NAME: aozora
   _CLOUDFLARE_ACCOUNT_ID: ''  # set in Cloud Build trigger substitutions
+  _COMMIT_SHA: ''             # set via trigger substitution $COMMIT_SHA, or --substitutions in manual submit
 
 options:
   logging: CLOUD_LOGGING_ONLY
 
 images:
-  - '${_REGION}-docker.pkg.dev/$PROJECT_ID/aozora/importer:$COMMIT_SHA'
-  - '${_REGION}-docker.pkg.dev/$PROJECT_ID/aozora/importer:latest'
+  - '${_REGION}-docker.pkg.dev/$PROJECT_ID/aozora/python:${_COMMIT_SHA}'
+  - '${_REGION}-docker.pkg.dev/$PROJECT_ID/aozora/python:latest'
+  - '${_REGION}-docker.pkg.dev/$PROJECT_ID/aozora/node:${_COMMIT_SHA}'
+  - '${_REGION}-docker.pkg.dev/$PROJECT_ID/aozora/node:latest'

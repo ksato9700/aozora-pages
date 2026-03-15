@@ -135,3 +135,23 @@ class AozoraJSON:
         with contributors_path.open("w", encoding="utf-8") as f:
             json.dump(list(self._contributors.values()), f, ensure_ascii=False)
         logger.info(f"Wrote {len(self._contributors)} contributors to {contributors_path}")
+
+    def upload_json_to_r2(self, output_dir: str | Path) -> None:
+        """Upload books.json, persons.json, and contributors.json to R2 under data/."""
+        if not R2_BUCKET_NAME:
+            logger.info("R2 not configured — skipping JSON upload")
+            return
+        out = Path(output_dir)
+        s3 = _r2_client()
+        for name in ("books.json", "persons.json", "contributors.json"):
+            path = out / name
+            try:
+                s3.put_object(
+                    Bucket=R2_BUCKET_NAME,
+                    Key=f"data/{name}",
+                    Body=path.read_bytes(),
+                    ContentType="application/json",
+                )
+                logger.info("Uploaded data/%s to R2", name)
+            except Exception as e:
+                logger.warning("Failed to upload data/%s to R2: %s", name, e)
