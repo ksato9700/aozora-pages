@@ -41,8 +41,9 @@ def main() -> None:
         output_path = output_dir / output_filename
 
         if output_path.exists():
-            count_skipped += 1
-            continue
+            if sjis_path.stat().st_mtime <= output_path.stat().st_mtime:
+                count_skipped += 1
+                continue
 
         try:
             with open(sjis_path, "rb") as f:

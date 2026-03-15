@@ -4,25 +4,14 @@ import re
 
 # ruff: noqa: RUF001, RUF002, RUF003
 
-try:
-    from .gaiji_table import GAIJI_TABLE
-except ImportError:
-    GAIJI_TABLE = {}
+from .gaiji_table import GAIJI_TABLE
 
+# Matches the innermost ［＃...］ annotation (no nested ［＃ inside).
+# (?:※)? — optional reference mark prefix
+_GAIJI_PATTERN = re.compile(r"(?:※)?［＃(?:(?!［＃).)+?］")
 
-def load_gaiji_table(table_path: str = "jisx0213-2004-std.txt") -> None:
-    """Load the JIS X 0213 to Unicode mapping table.
-
-    DEPRECATED: The table is now pre-loaded from gaiji_table.py.
-    This function is kept for backward compatibility but does nothing effective
-    if the table is already imported.
-    """
-    if GAIJI_TABLE:
-        return
-
-    # If GAIJI_TABLE is empty (ImportError), we could try to load it manually here as fallback?
-    # For now, let's keep it simple as per plan.
-    pass
+# Matches a placeholder reference inside an annotation: ［＃「X」はY
+_PH_PATTERN = re.compile(r"［＃「(.+?)」は")
 
 
 def get_gaiji(s: str) -> str:
@@ -33,10 +22,6 @@ def get_gaiji(s: str) -> str:
         ※［＃「身＋單」、U+8EC3、56-1］
 
     """
-    # Ensure table is loaded
-    if not GAIJI_TABLE:
-        load_gaiji_table()
-
     # Safety: If string contains nested annotations (multiple ［＃), do not resolve.
     # This happens when a note quotes another annotation, e.g. ［＃「※［＃...］...
     if s.count("［＃") > 1:
@@ -87,7 +72,7 @@ def get_gaiji(s: str) -> str:
         key = f"{prefix}-{row + 32:2X}{cell + 32:2X}"
         return GAIJI_TABLE.get(key, s)
 
-    # Pattern 2: Direct Unicode Reference
+    # Pattern 3: Direct Unicode Reference
     # e.g., U+8EC3
     m = re.search(r"U\+(\w{4})", s)
     if m:
@@ -105,66 +90,39 @@ def sub_gaiji(text: str) -> str:
     e.g. 1［＃「1」は...］ -> Replace '1' with the gaiji char.
 
     Supports nested annotations by iteratively resolving innermost tags first.
+    Iterates until no further substitutions are made (typically one pass).
     """
-    # Regex to find innermost annotations (containing no nested ［＃)
-    # (?:※)? matches optional reference mark
-    # ［＃ matches start tag
-    # (?:(?!［＃).)+? matches content that does NOT contain start tag
-    # ］ matches end tag
-    pattern = re.compile(r"(?:※)?［＃(?:(?!［＃).)+?］")
-
-    while True:
-        matched_any = False
+    for _ in range(10):  # iteration cap handles rare nesting; exits after 1 pass in common case
         result = []
         last_end = 0
+        changed = False
 
-        # Find all innermost matches in current text
-        matches = list(pattern.finditer(text))
-
-        if not matches:
-            break
-
-        for m in matches:
-            original_start = m.start()
-            original_end = m.end()
+        for m in _GAIJI_PATTERN.finditer(text):
             annotation = m.group(0)
-
-            # 1. Resolve Gaiji
             replacement = get_gaiji(annotation)
+            preceding = text[last_end:m.start()]
 
-            # Check for placeholder logic
-            # Pattern: ［＃「(placeholder)」は...
-            m_ph = re.search(r"［＃「(.+?)」は", annotation)
+            # Placeholder removal: if the annotation contains 「X」は and resolves
+            # to a short substitution, strip the preceding occurrence of X.
+            ph_m = _PH_PATTERN.search(annotation)
+            if ph_m and replacement != annotation and len(replacement) < 4:
+                placeholder = ph_m.group(1)
+                if preceding.endswith(placeholder):
+                    preceding = preceding[: -len(placeholder)]
+                    changed = True
 
-            placeholder_len = 0
-            if m_ph and replacement != annotation and len(replacement) < 4:
-                placeholder = m_ph.group(1)
-                # Check if text immediately preceding match (after last_end) ends with placeholder
-                preceding_chunk = text[last_end:original_start]
-                if preceding_chunk.endswith(placeholder):
-                    # We found the placeholder!
-                    # We should remove it from the preceding chunk.
-                    placeholder_len = len(placeholder)
+            if replacement != annotation:
+                changed = True
 
-            # If we are making a change (replacement or placeholder removal)
-            if replacement != annotation or placeholder_len > 0:
-                matched_any = True
-
-            # Append text from last_end to (match_start - placeholder_len)
-            result.append(text[last_end : original_start - placeholder_len])
+            result.append(preceding)
             result.append(replacement)
+            last_end = m.end()
 
-            last_end = original_end
-
-        # Append remaining text
-        result.append(text[last_end:])
-
-        # Update text for next iteration
-        text = "".join(result)
-
-        # If no changes were made in this pass, straightforwardly break to avoid infinite loop
-        if not matched_any:
+        if not changed:
             break
+
+        result.append(text[last_end:])
+        text = "".join(result)
 
     return text
 
@@ -178,8 +136,8 @@ def _replace_backslash_in_bytes(content: bytes) -> bytes:
     new_content = bytearray()
     i = 0
     n = len(content)
-    # Placeholder must be ASCII safe to decode with shift_jis_2004
-    placeholder = b"_AA_FWBS_AA_"
+    # Null byte cannot appear in valid Shift JIS text, so it is a safe sentinel.
+    placeholder = b"\x00"
 
     while i < n:
         b = content[i]
@@ -224,7 +182,7 @@ def convert_content(content: bytes) -> str:
     text = content.decode("shift_jis_2004")
 
     # Restore Fullwidth Backslash
-    text = text.replace("_AA_FWBS_AA_", "＼")
+    text = text.replace("\x00", "＼")
 
     return sub_gaiji(text)
 

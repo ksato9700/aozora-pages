@@ -70,6 +70,7 @@ def process_file(
     bucket: str,
     s3,
     dry_run: bool,
+    upload_new: bool = False,
 ) -> str:
     """Convert one TXT file and upload to R2 if the HTML changed.
 
@@ -100,8 +101,11 @@ def process_file(
         outcome = "unchanged" if new_md5 == existing_etag else "changed"
     except ClientError as e:
         if e.response["Error"]["Code"] in ("NoSuchKey", "404", "403"):
-            logger.debug("Skipping %s — no HTML in R2", html_key)
-            return "missing"
+            if upload_new:
+                outcome = "changed"
+            else:
+                logger.debug("Skipping %s — no HTML in R2", html_key)
+                return "missing"
         else:
             logger.error("R2 head error %s: %s", html_key, e)
             return "error"
@@ -138,6 +142,11 @@ def main() -> None:
         help="Compare but do not upload; log what would change",
     )
     parser.add_argument(
+        "--upload-new",
+        action="store_true",
+        help="Upload files that have no existing HTML in R2 (new books)",
+    )
+    parser.add_argument(
         "--concurrency",
         type=int,
         default=DEFAULT_CONCURRENCY,
@@ -164,7 +173,7 @@ def main() -> None:
 
     with ThreadPoolExecutor(max_workers=args.concurrency) as executor:
         futures = {
-            executor.submit(process_file, p, bucket, s3, args.dry_run): p
+            executor.submit(process_file, p, bucket, s3, args.dry_run, args.upload_new): p
             for p in txt_files
         }
         for future in as_completed(futures):
