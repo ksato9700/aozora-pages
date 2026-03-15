@@ -108,14 +108,17 @@ class TextToHtmlConverter:
         if not lines:
             return
         info["title"] = lines[0]
+        has_contributor = False
         for line in lines[1:]:
-            if "author" not in info and not self._is_orig(line):
-                info["author"] = line
-            elif line.endswith("訳"):
+            if line.endswith("訳"):
                 info["translator"] = line
+                has_contributor = True
             elif any(line.endswith(x) for x in ["編", "編集", "校訂"]):
                 info["editor"] = line
-            elif self._is_orig(line):
+                has_contributor = True
+            elif "author" not in info:
+                info["author"] = line
+            elif has_contributor and self._is_orig(line):
                 info["original_title" if "original_title" not in info else "original_subtitle"] = line
             else:
                 info["subtitle" if "subtitle" not in info else "original_subtitle"] = line
@@ -292,36 +295,78 @@ class TextToHtmlConverter:
     def _handle_cmd(self, cmd: str, f: TextIO) -> None:
         if cmd.startswith("ここから"):
             self._flush(f)
-            # Close current paragraph
             f.write("</p>")
-            cls = "jisage" if "字下げ" in cmd else "keigakomi" if "罫囲み" in cmd else "block"
-            # Extract depth for jisage? "ここから１字下げ"
-            if m := re.search(r"([０-９]+)字下げ", cmd):
+            if "右に寄せる" in cmd or "右寄せ" in cmd:
+                cls = "align-right"
+            elif "センタリング" in cmd:
+                cls = "align-center"
+            elif "罫囲み" in cmd:
+                cls = "keigakomi"
+            elif m := re.search(r"([０-９]+)字下げ", cmd):
                 cls = f"jisage_{self._kanji_num(m.group(1))}"
+            elif "字下げ" in cmd:
+                cls = "jisage"
+            else:
+                cls = "block"
             f.write(f'<div class="{cls}">\n<p>')
             self.indent_stack.append(cls)
-        elif cmd.endswith("終わり") and cmd != "文頭":
+        elif cmd.endswith("終わり"):
             self._flush(f)
             if self.indent_stack:
                 self.indent_stack.pop()
                 # Close paragraph inside div, close div, start new paragraph
                 f.write("</p></div>\n<p>")
         elif "見出し" in cmd:
-            self._flush(f)
-            # Check size
+            # Extract heading text from 「...」 in cmd; fall back to buffer content
+            m = re.search(r"「(.+?)」", cmd)
+            if m:
+                heading_text = html.escape(m.group(1))
+                self.buffer = []
+                self.ruby_rb_start = None
+            else:
+                parts = [x["text"] if x["safe"] else html.escape(x["text"]) for x in self.buffer]
+                heading_text = "".join(parts)
+                self.buffer = []
+                self.ruby_rb_start = None
             tag = "h5"
             if "大" in cmd:
                 tag = "h3"
             elif "中" in cmd:
                 tag = "h4"
-            # Close previous p, close previous section, start new section, start new p (after heading)
-            f.write(f'</p>\n</section>\n<section>\n<{tag} class="midashi">{cmd}</{tag}>\n<p>')
+            f.write(f'</p>\n</section>\n<section>\n<{tag} class="midashi">{heading_text}</{tag}>\n<p>')
         elif "改ページ" in cmd:
             self._flush(f)
             # Close p, break, start new p
             f.write('</p>\n<hr>\n<div class="page_break"></div>\n<p>')
-        else:
-            pass
+        elif m := re.search(r"「(.+?)」[はに](.+)", cmd):
+            span_text = m.group(1)
+            kind = m.group(2)
+            inline_tags: dict[str, tuple[str, str]] = {
+                "傍点": ('<em class="bouten">', "</em>"),
+                "太字": ("<strong>", "</strong>"),
+                "斜体": ('<em class="italic">', "</em>"),
+                "縦中横": ('<span class="tcy">', "</span>"),
+                "割り注": ('<span class="warichuu">', "</span>"),
+            }
+            for key, (tag_open, tag_close) in inline_tags.items():
+                if key in kind:
+                    self._replace_buffer_tail(
+                        span_text,
+                        f"{tag_open}{html.escape(span_text)}{tag_close}",
+                    )
+                    break
+
+    def _replace_buffer_tail(self, text: str, replacement: str) -> None:
+        """Remove the last len(text) plain-text chars from the buffer if they match text, then append replacement."""
+        n = len(text)
+        tail = self.buffer[-n:] if n and len(self.buffer) >= n else []
+        if (
+            len(tail) == n
+            and all(not item["safe"] for item in tail)
+            and "".join(item["text"] for item in tail) == text
+        ):
+            del self.buffer[-n:]
+        self._append(replacement, raw=True)
 
     def _handle_ruby(self, ruby: str) -> None:
         if self.ruby_rb_start is not None:
@@ -379,6 +424,10 @@ class TextToHtmlConverter:
         return s.translate(tr)
 
     def _write_footer(self, f: TextIO) -> None:
+        # Close any unclosed indent blocks
+        for _ in self.indent_stack:
+            f.write("</p></div>\n<p>")
+        self.indent_stack.clear()
         if self.in_footer:
             f.write("</div>\n")
             f.write("</footer>\n")

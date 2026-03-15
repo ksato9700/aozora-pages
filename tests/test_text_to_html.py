@@ -153,6 +153,193 @@ def test_no_dash_block(tmp_path: pathlib.Path):
     assert "-------------------------------------------------------" not in output_content
 
 
+def test_heading_uses_heading_text_not_command_string(tmp_path: pathlib.Path):
+    """Fix 1: heading tag must contain the heading text, not the raw command string."""
+    input_file = tmp_path / "input.txt"
+    output_file = tmp_path / "output.html"
+
+    input_file.write_text(
+        "タイトル\n著者\n\n第一章［＃「第一章」は大見出し］\n本文",
+        encoding="utf-8",
+    )
+
+    converter = TextToHtmlConverter(str(input_file), str(output_file))
+    converter.convert()
+    output = output_file.read_text(encoding="utf-8")
+
+    assert '<h3 class="midashi">第一章</h3>' in output
+    assert "は大見出し" not in output
+
+
+def test_heading_tag_size(tmp_path: pathlib.Path):
+    """大見出し → h3, 中見出し → h4, 見出し → h5."""
+    input_file = tmp_path / "input.txt"
+    output_file = tmp_path / "output.html"
+
+    input_file.write_text(
+        "T\nA\n\n大見出し［＃「大見出し」は大見出し］\n中見出し［＃「中見出し」は中見出し］\n小見出し［＃「小見出し」は見出し］",
+        encoding="utf-8",
+    )
+
+    converter = TextToHtmlConverter(str(input_file), str(output_file))
+    converter.convert()
+    output = output_file.read_text(encoding="utf-8")
+
+    assert '<h3 class="midashi">大見出し</h3>' in output
+    assert '<h4 class="midashi">中見出し</h4>' in output
+    assert '<h5 class="midashi">小見出し</h5>' in output
+
+
+def test_unclosed_indent_block_produces_valid_html(tmp_path: pathlib.Path):
+    """Fix 2: unclosed ここから block must be closed before </article>."""
+    input_file = tmp_path / "input.txt"
+    output_file = tmp_path / "output.html"
+
+    input_file.write_text(
+        "タイトル\n著者\n\n本文\n［＃ここから２字下げ］\n字下げ内容",
+        encoding="utf-8",
+    )
+
+    converter = TextToHtmlConverter(str(input_file), str(output_file))
+    converter.convert()
+    output = output_file.read_text(encoding="utf-8")
+
+    # Every opened <div> must be closed before </article>
+    open_divs = output.count("<div")
+    close_divs = output.count("</div>")
+    assert open_divs == close_divs
+
+
+def test_english_author_name_not_misclassified(tmp_path: pathlib.Path):
+    """Fix 3: ASCII author names must appear as author, not original_title."""
+    input_file = tmp_path / "input.txt"
+    output_file = tmp_path / "output.html"
+
+    input_file.write_text(
+        "緋文字\nHans Christian Andersen\n田中 太郎 訳\n\n本文",
+        encoding="utf-8",
+    )
+
+    converter = TextToHtmlConverter(str(input_file), str(output_file))
+    converter.convert()
+    output = output_file.read_text(encoding="utf-8")
+
+    assert '<h2 class="author">Hans Christian Andersen</h2>' in output
+    assert 'class="original_title"' not in output
+
+
+def test_original_title_after_contributor(tmp_path: pathlib.Path):
+    """Fix 3: ASCII line after a role-identified contributor is still an original_title."""
+    input_file = tmp_path / "input.txt"
+    output_file = tmp_path / "output.html"
+
+    # Pattern: Japanese title, Japanese author (no role suffix), translator, then original ASCII title
+    input_file.write_text(
+        "緋文字\nナサニエル・ホーソーン\n田中 太郎 訳\nThe Scarlet Letter\n\n本文",
+        encoding="utf-8",
+    )
+
+    converter = TextToHtmlConverter(str(input_file), str(output_file))
+    converter.convert()
+    output = output_file.read_text(encoding="utf-8")
+
+    assert '<h2 class="author">ナサニエル・ホーソーン</h2>' in output
+    assert '<h2 class="translator">田中 太郎 訳</h2>' in output
+    assert '<h2 class="original_title">The Scarlet Letter</h2>' in output
+
+
+def test_owari_handler_no_dead_code(tmp_path: pathlib.Path):
+    """Fix 4: 終わり handler closes indent blocks (dead `and cmd != '文頭'` guard removed)."""
+    input_file = tmp_path / "input.txt"
+    output_file = tmp_path / "output.html"
+
+    input_file.write_text(
+        "T\nA\n\n［＃ここから２字下げ］\n字下げ内容\n［＃ここで字下げ終わり］\n通常テキスト",
+        encoding="utf-8",
+    )
+
+    converter = TextToHtmlConverter(str(input_file), str(output_file))
+    converter.convert()
+    output = output_file.read_text(encoding="utf-8")
+
+    assert '<div class="jisage_2">' in output
+    assert "字下げ内容" in output
+    assert "通常テキスト" in output
+    assert output.count("<div") == output.count("</div>")
+
+
+def test_inline_bouten(tmp_path: pathlib.Path):
+    """Fix 5: 傍点 command wraps span text in <em class="bouten">."""
+    input_file = tmp_path / "input.txt"
+    output_file = tmp_path / "output.html"
+
+    input_file.write_text(
+        "T\nA\n\n強調テキスト［＃「強調テキスト」に傍点］",
+        encoding="utf-8",
+    )
+
+    converter = TextToHtmlConverter(str(input_file), str(output_file))
+    converter.convert()
+    output = output_file.read_text(encoding="utf-8")
+
+    assert '<em class="bouten">強調テキスト</em>' in output
+
+
+def test_inline_bold(tmp_path: pathlib.Path):
+    """Fix 5: 太字 command wraps span text in <strong>."""
+    input_file = tmp_path / "input.txt"
+    output_file = tmp_path / "output.html"
+
+    input_file.write_text(
+        "T\nA\n\n太字テキスト［＃「太字テキスト」は太字］",
+        encoding="utf-8",
+    )
+
+    converter = TextToHtmlConverter(str(input_file), str(output_file))
+    converter.convert()
+    output = output_file.read_text(encoding="utf-8")
+
+    assert "<strong>太字テキスト</strong>" in output
+
+
+def test_block_align_right(tmp_path: pathlib.Path):
+    """Fix 5: ここから右に寄せる opens <div class="align-right">."""
+    input_file = tmp_path / "input.txt"
+    output_file = tmp_path / "output.html"
+
+    input_file.write_text(
+        "T\nA\n\n［＃ここから右に寄せる］\n右寄せ内容\n［＃ここで右に寄せる終わり］",
+        encoding="utf-8",
+    )
+
+    converter = TextToHtmlConverter(str(input_file), str(output_file))
+    converter.convert()
+    output = output_file.read_text(encoding="utf-8")
+
+    assert '<div class="align-right">' in output
+    assert "右寄せ内容" in output
+    assert output.count("<div") == output.count("</div>")
+
+
+def test_block_centering(tmp_path: pathlib.Path):
+    """Fix 5: ここからセンタリング opens <div class="align-center">."""
+    input_file = tmp_path / "input.txt"
+    output_file = tmp_path / "output.html"
+
+    input_file.write_text(
+        "T\nA\n\n［＃ここからセンタリング］\nセンタリング内容\n［＃ここでセンタリング終わり］",
+        encoding="utf-8",
+    )
+
+    converter = TextToHtmlConverter(str(input_file), str(output_file))
+    converter.convert()
+    output = output_file.read_text(encoding="utf-8")
+
+    assert '<div class="align-center">' in output
+    assert "センタリング内容" in output
+    assert output.count("<div") == output.count("</div>")
+
+
 def test_semantic_footer(tmp_path: pathlib.Path):
     input_file = tmp_path / "input_footer.txt"
     output_file = tmp_path / "output_footer.html"
