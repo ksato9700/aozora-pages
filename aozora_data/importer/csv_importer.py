@@ -106,7 +106,7 @@ def _process_row(
     first_contributor_map: dict,
     algolia_books: dict,
     algolia_persons: dict,
-) -> None:
+) -> dict:
     """Upsert one CSV row (book, person, contributor) into the DB and collect Algolia records."""
     book_id = row["book_id"]
     person_id = row["person_id"]
@@ -143,7 +143,7 @@ def _process_row(
         "html_updated": _parse_int(row["html_updated"]),
     }
     db.upsert_book(book_id, book_data)
-    algolia_books[book_id] = {
+    algolia_books[book_id] = {  # type: ignore[index]
         "objectID": book_id,
         "book_id": book_data["book_id"],
         "title": book_data["title"],
@@ -197,8 +197,10 @@ def _process_row(
     if book_id not in first_contributor_map:
         first_contributor_map[book_id] = author_entry
 
+    return book_data
 
-def import_from_csv_url(csv_url: str, db: AozoraDB, limit: int = 0) -> str | None:
+
+def import_from_csv_url(csv_url: str, db: AozoraDB, limit: int = 0) -> tuple[str | None, list[dict]]:
     """Import books, persons, and contributors from a CSV file URL."""
     resp = requests.get(csv_url)
     resp.raise_for_status()
@@ -217,7 +219,7 @@ def import_from_csv_url(csv_url: str, db: AozoraDB, limit: int = 0) -> str | Non
                 return import_from_csv(stream, db, limit)
 
 
-def import_from_csv(csv_stream: TextIO, db: AozoraDB, limit: int = 0) -> str | None:
+def import_from_csv(csv_stream: TextIO, db: AozoraDB, limit: int = 0) -> tuple[str | None, list[dict]]:
     """Import books, persons, and contributors from a CSV file."""
     csv_obj = DictReader(csv_stream, fieldnames=FIELD_NAMES)
 
@@ -243,6 +245,9 @@ def import_from_csv(csv_stream: TextIO, db: AozoraDB, limit: int = 0) -> str | N
     algolia_books: dict[str, dict] = {}
     algolia_persons: dict[str, dict] = {}
 
+    # Book records for changed books (used by the text/HTML pipeline)
+    changed_book_data: dict[str, dict] = {}
+
     count = 0
     for row in csv_obj:
         if limit > 0 and count >= limit:
@@ -256,7 +261,7 @@ def import_from_csv(csv_stream: TextIO, db: AozoraDB, limit: int = 0) -> str | N
             # Always upsert every row into the DB so JSON files contain the full dataset.
             # Only accumulate Algolia records for rows that are new/changed since the watermark.
             is_changed = not watermark or not row_last_modified or row_last_modified > watermark
-            _process_row(
+            book_data = _process_row(
                 row,
                 db,
                 author_map,
@@ -264,6 +269,12 @@ def import_from_csv(csv_stream: TextIO, db: AozoraDB, limit: int = 0) -> str | N
                 algolia_books if is_changed else {},
                 algolia_persons if is_changed else {},
             )
+            if is_changed:
+                # Collect once per book_id (multiple rows share the same book when there
+                # are several contributors; we only need the book record once).
+                book_id = row["book_id"]
+                if book_id not in changed_book_data:
+                    changed_book_data[book_id] = book_data
             count += 1
 
         except Exception as e:
@@ -285,8 +296,9 @@ def import_from_csv(csv_stream: TextIO, db: AozoraDB, limit: int = 0) -> str | N
 
     _sync_algolia(algolia_books, algolia_persons)
 
-    # Return the new watermark value; the caller saves it after flushing JSON files.
-    return max_last_modified
+    # Return the new watermark and the list of changed book records.
+    # The caller saves the watermark after flushing JSON files.
+    return max_last_modified, list(changed_book_data.values())
 
 
 def _sync_algolia(algolia_books: dict, algolia_persons: dict) -> None:
