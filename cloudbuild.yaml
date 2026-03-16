@@ -94,8 +94,3 @@ substitutions:
 options:
   logging: CLOUD_LOGGING_ONLY
 
-images:
-  - '${_REGION}-docker.pkg.dev/$PROJECT_ID/aozora/python:${_COMMIT_SHA}'
-  - '${_REGION}-docker.pkg.dev/$PROJECT_ID/aozora/python:latest'
-  - '${_REGION}-docker.pkg.dev/$PROJECT_ID/aozora/node:${_COMMIT_SHA}'
-  - '${_REGION}-docker.pkg.dev/$PROJECT_ID/aozora/node:latest'
