@@ -20,6 +20,8 @@ COPY aozora_data/__init__.py ./aozora_data/__init__.py
 COPY aozora_data/db ./aozora_data/db
 COPY aozora_data/importer ./aozora_data/importer
 COPY aozora_data/algolia ./aozora_data/algolia
+COPY aozora_data/sjis_to_utf8 ./aozora_data/sjis_to_utf8
+COPY aozora_data/text_to_html ./aozora_data/text_to_html
 
 ENV PATH="/app/.venv/bin:$PATH"
 ENV DATA_DIR=/astro/data

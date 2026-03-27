@@ -7,6 +7,7 @@ import requests as http_requests
 
 from ..db.json_backend import AozoraJSON
 from .csv_importer import import_from_csv_url
+from .html_pipeline import upload_html_for_changed_books
 
 logger = logging.getLogger(__name__)
 
@@ -64,6 +65,7 @@ def main():
         if max_last_modified:
             db.save_watermark(max_last_modified)
         logger.info("Changed books: %d", len(changed_books))
+        upload_html_for_changed_books(changed_books)
 
     trigger_node_job()
 
