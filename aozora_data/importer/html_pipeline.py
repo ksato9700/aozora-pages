@@ -27,7 +27,7 @@ def _process_book(book: dict, s3, bucket: str) -> str:
 
     Returns one of: 'uploaded', 'skipped', 'error'.
     """
-    book_id = str(book.get("book_id", ""))
+    book_id = str(book.get("book_id", "")).zfill(6)
     text_url = book.get("text_url", "")
     text_encoding = book.get("text_encoding", "")
 

@@ -57,47 +57,41 @@ def test_import_from_csv(db: FakeDB):
         person_id = "20001"
 
         # Ensure data is stored
-        assert int(book_id) in [db.stored_books[k]["book_id"] for k in db.stored_books]
+        assert book_id.zfill(6) in [db.stored_books[k]["book_id"] for k in db.stored_books]
         # Our stored_books keys are string IDs from CSV, but values are typed.
         # Let's check based on the key
-        assert book_id in db.stored_books
-        book_data = db.stored_books[book_id]
-        assert book_data["book_id"] == 10001
+        book_id_padded = book_id.zfill(6)
+        assert book_id_padded in db.stored_books
+        book_data = db.stored_books[book_id_padded]
+        assert book_data["book_id"] == book_id_padded
 
         # Person
-        assert person_id in db.stored_persons
-        person_data = db.stored_persons[person_id]
-        assert person_data["person_id"] == 20001
+        person_id_padded = person_id.zfill(6)
+        assert person_id_padded in db.stored_persons
+        person_data = db.stored_persons[person_id_padded]
+        assert person_data["person_id"] == person_id_padded
 
         # Contributor
-        # Contributor ID is composite: book-person-role
-        # We need to find the one matching book_10001, person_20001
-        # Role 1 is Translator in old Enum?
-        # Let's check if there is a contributor for this pair
         found = False
         for _cid, cdata in db.stored_contributors.items():
-            if cdata["book_id"] == 10001 and cdata["person_id"] == 20001:
+            if cdata["book_id"] == "010001" and cdata["person_id"] == "020001":
                 found = True
                 assert cdata["role"] == 1  # Translator
                 break
         assert found
 
         # Author denormalization
-        # book 10003 has 著者 (role 0) — primary author stored directly
-        assert db.stored_books["10003"]["author_name"] == "last_name_03 first_name_03"
-        assert db.stored_books["10003"]["author_id"] == 20003
+        assert db.stored_books["010003"]["author_name"] == "last_name_03 first_name_03"
+        assert db.stored_books["010003"]["author_id"] == "020003"
 
-        # book 10001 has 翻訳者 (role 1) only — falls back to first contributor
-        assert db.stored_books["10001"]["author_name"] == "last_name_01 first_name_01"
-        assert db.stored_books["10001"]["author_id"] == 20001
+        assert db.stored_books["010001"]["author_name"] == "last_name_01 first_name_01"
+        assert db.stored_books["010001"]["author_id"] == "020001"
 
-        # book 10000 has 編者 (role 2) only — falls back to first contributor
-        assert db.stored_books["10000"]["author_name"] == "last_name_00 first_name_00"
-        assert db.stored_books["10000"]["author_id"] == 20000
+        assert db.stored_books["010000"]["author_name"] == "last_name_00 first_name_00"
+        assert db.stored_books["010000"]["author_id"] == "020000"
 
-        # book 10002 has 校訂者 (role 3) only — falls back to first contributor
-        assert db.stored_books["10002"]["author_name"] == "last_name_02 first_name_02"
-        assert db.stored_books["10002"]["author_id"] == 20002
+        assert db.stored_books["010002"]["author_name"] == "last_name_02 first_name_02"
+        assert db.stored_books["010002"]["author_id"] == "020002"
 
 
 def test_import_from_csv_url(db: FakeDB, requests_mock: Mocker):
@@ -109,8 +103,8 @@ def test_import_from_csv_url(db: FakeDB, requests_mock: Mocker):
 
         assert len(db.stored_books) == 4
 
-        book_id = "10003"
-        person_id = "20003"
+        book_id = "010003"
+        person_id = "020003"
 
         assert book_id in db.stored_books
         book_data = db.stored_books[book_id]
@@ -119,8 +113,8 @@ def test_import_from_csv_url(db: FakeDB, requests_mock: Mocker):
         person_data = db.stored_persons[person_id]
 
         # Check integrity
-        assert book_data["book_id"] == 10003
-        assert person_data["person_id"] == 20003
+        assert book_data["book_id"] == "010003"
+        assert person_data["person_id"] == "020003"
 
 
 def test_import_from_csv_url_with_limit(db: FakeDB, requests_mock: Mocker):
@@ -149,4 +143,4 @@ def test_import_with_release_date_watermark(db: FakeDB):
         
     assert new_watermark == "2022-09-02"
     assert len(changed_books) == 1
-    assert changed_books[0]["book_id"] == 12345
+    assert changed_books[0]["book_id"] == "012345"

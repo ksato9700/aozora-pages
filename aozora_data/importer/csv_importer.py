@@ -108,11 +108,11 @@ def _process_row(
     algolia_persons: dict,
 ) -> dict:
     """Upsert one CSV row (book, person, contributor) into the DB and collect Algolia records."""
-    book_id = row["book_id"]
-    person_id = row["person_id"]
+    book_id = row["book_id"].zfill(6)
+    person_id = row["person_id"].zfill(6)
 
     book_data = {
-        "book_id": _parse_int(book_id),
+        "book_id": book_id,
         "title": row["title"],
         "title_yomi": row["title_yomi"],
         "title_sort": row["title_sort"],
@@ -145,7 +145,7 @@ def _process_row(
     db.upsert_book(book_id, book_data)
     algolia_books[book_id] = {  # type: ignore[index]
         "objectID": book_id,
-        "book_id": book_data["book_id"],
+        "book_id": book_id,
         "title": book_data["title"],
         "title_yomi": book_data["title_yomi"],
         "font_kana_type": book_data["font_kana_type"],
@@ -153,7 +153,7 @@ def _process_row(
     }
 
     person_data = {
-        "person_id": _parse_int(person_id),
+        "person_id": person_id,
         "first_name": row["first_name"],
         "last_name": row["last_name"],
         "last_name_yomi": row["last_name_yomi"],
@@ -169,7 +169,7 @@ def _process_row(
     db.upsert_person(person_id, person_data)
     algolia_persons[person_id] = {
         "objectID": person_id,
-        "person_id": person_data["person_id"],
+        "person_id": person_id,
         "last_name": person_data["last_name"],
         "first_name": person_data["first_name"],
         "last_name_yomi": person_data["last_name_yomi"],
@@ -182,15 +182,15 @@ def _process_row(
         contributor_id,
         {
             "id": contributor_id,
-            "book_id": _parse_int(book_id),
-            "person_id": _parse_int(person_id),
+            "book_id": book_id,
+            "person_id": person_id,
             "role": role_id,
         },
     )
 
     author_entry = {
         "author_name": f"{row['last_name']} {row['first_name']}",
-        "author_id": _parse_int(person_id),
+        "author_id": person_id,
     }
     if role_id == 0:
         author_map[book_id] = author_entry
