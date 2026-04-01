@@ -53,6 +53,10 @@ def trigger_node_job() -> None:
 
 def main():
     """Import data from CSV, write JSON files, then save the watermark."""
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s %(levelname)s %(name)s %(message)s",
+    )
     db = AozoraJSON()
     if CSV_URL:
         # import_from_csv_url returns the max last_modified seen in this run.
@@ -62,10 +66,10 @@ def main():
         max_last_modified, changed_books = import_from_csv_url(CSV_URL, db)
         db.flush(DATA_DIR)
         db.upload_json_to_r2(DATA_DIR)
-        if max_last_modified:
-            db.save_watermark(max_last_modified)
         logger.info("Changed books: %d", len(changed_books))
         upload_html_for_changed_books(changed_books)
+        if max_last_modified:
+            db.save_watermark(max_last_modified)
 
     trigger_node_job()
 

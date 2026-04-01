@@ -255,12 +255,19 @@ def import_from_csv(csv_stream: TextIO, db: AozoraDB, limit: int = 0) -> tuple[s
 
         try:
             row_last_modified = _parse_date(row["last_modified"])
-            if row_last_modified and (not max_last_modified or row_last_modified > max_last_modified):
-                max_last_modified = row_last_modified
+            row_release_date = _parse_date(row["release_date"])
+            
+            # Use the later of last_modified and release_date for watermark
+            relevant_date = row_last_modified
+            if row_release_date and (not relevant_date or row_release_date > relevant_date):
+                relevant_date = row_release_date
+
+            if relevant_date and (not max_last_modified or relevant_date > max_last_modified):
+                max_last_modified = relevant_date
 
             # Always upsert every row into the DB so JSON files contain the full dataset.
             # Only accumulate Algolia records for rows that are new/changed since the watermark.
-            is_changed = not watermark or not row_last_modified or row_last_modified > watermark
+            is_changed = not watermark or not relevant_date or relevant_date > watermark
             book_data = _process_row(
                 row,
                 db,

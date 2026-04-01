@@ -131,3 +131,22 @@ def test_import_from_csv_url_with_limit(db: FakeDB, requests_mock: Mocker):
             import_from_csv_url(csv_url, db, limit=2)
 
         assert len(db.stored_books) == 2
+
+
+def test_import_with_release_date_watermark(db: FakeDB):
+    # Watermark is 2022-09-01
+    db.save_watermark("2022-09-01")
+
+    # CSV with a book that has release_date > watermark but last_modified <= watermark
+    csv_content = """作品ID,作品名,作品名読み,ソート用読み,副題,副題読み,原題,初出,分類番号,文字遣い種別,作品著作権フラグ,公開日,最終更新日,図書カードURL,人物ID,姓,名,姓読み,名読み,姓読みソート用,名読みソート用,姓ローマ字,名ローマ字,役割フラグ,生年月日,没年月日,人物著作権フラグ,底本名1,底本出版社名1,底本初版発行年1,入力に使用した版1,校正に使用した版1,底本の親本名1,底本の親本出版社名1,底本の親本初版発行年1,底本名2,底本出版社名2,底本初版発行年2,入力に使用した版2,校正に使用した版2,底本の親本名2,底本の親本出版社名2,底本の親本初版発行年2,入力者,校正者,テキストファイルURL,テキストファイル最終更新日,テキストファイル符号化方式,テキストファイル文字集合,テキストファイル修正回数,XHTML/HTMLファイルURL,XHTML/HTMLファイル最終更新日,XHTML/HTMLファイル符号化方式,XHTML/HTMLファイル文字集合,XHTML/HTMLファイル修正回数
+12345,New Book,よみ,sort,,,初出,,123,新字新仮名,なし,2022-09-02,2022-09-01,https://card,678,姓,名,せい,めい,せい,めい,sei,mei,著者,,,,,,,,,,,,,,,,,,,,,,,,,,,https://txt,2022-09-01,ShiftJIS,JIS X 0208,0,https://html,2022-09-01,ShiftJIS,JIS X 0208,0
+"""
+    import io
+    stream = io.StringIO(csv_content)
+    
+    with patch("aozora_data.importer.csv_importer._sync_algolia"):
+        new_watermark, changed_books = import_from_csv(stream, db)
+        
+    assert new_watermark == "2022-09-02"
+    assert len(changed_books) == 1
+    assert changed_books[0]["book_id"] == 12345
