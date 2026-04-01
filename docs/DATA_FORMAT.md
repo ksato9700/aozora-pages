@@ -79,8 +79,8 @@ Array of book–person–role relationships.
 | Field | Type | Description |
 |---|---|---|
 | `id` | String | Composite ID: `{book_id}-{person_id}-{role_id}` |
-| `book_id` | Integer | Book ID (integer, not zero-padded) |
-| `person_id` | Integer | Person ID (integer, not zero-padded) |
+| `book_id` | String | Book ID (6-digit zero-padded string) |
+| `person_id` | String | Person ID (6-digit zero-padded string) |
 | `role` | Integer | Role ID (see Role Mapping below) |
 
 **Role Mapping**:
@@ -92,8 +92,6 @@ Array of book–person–role relationships.
 | `2` | 編者 (Editor) |
 | `3` | 校訂者 (Revisor) |
 | `4` | その他 (Other) |
-
-> Note: `book_id` and `person_id` in contributors are integers. The Astro data loader (`data.ts`) pads them with `toString().padStart(6, '0')` to match the string IDs in `books.json` and `persons.json`.
 
 ---
 
